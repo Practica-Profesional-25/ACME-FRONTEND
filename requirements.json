@@ -1,0 +1,152 @@
+{
+  "app": {
+    "name": "Adventure Works - Proceso de Venta",
+    "theme": {
+      "style": "clean, modern",
+      "palette": {
+        "primary": "#f7941e",
+        "secondary": "#7ac142",
+        "accent": "#333333",
+        "background": "#ffffff"
+      }
+    },
+    "flow": {
+      "type": "wizard",
+      "steps": [
+        {
+          "name": "Seleccion de Productos",
+          "sections": [
+            {
+              "type": "search",
+              "title": "Buscar productos",
+              "fields": [
+                { "label": "Nombre", "type": "text" },
+                { "label": "Identificador", "type": "text" },
+                { "label": "Categoría", "type": "select" },
+                { "label": "Subcategoría", "type": "select" }
+              ]
+            },
+            {
+              "type": "table",
+              "title": "Productos seleccionados",
+              "columns": ["Identificador", "Nombre", "Cantidad", "Precio unitario", "Subtotal", "Impuesto", "Total"],
+              "footer": ["Total de la venta"]
+            }
+          ],
+          "validation": {
+            "rules": ["Debe existir al menos un producto en la tabla antes de continuar"]
+          }
+        },
+        {
+          "name": "Seleccion de Cliente",
+          "sections": [
+            {
+              "type": "search",
+              "title": "Buscar cliente",
+              "fields": [
+                { "label": "Nombre", "type": "text" },
+                { "label": "DUI", "type": "text" },
+                { "label": "NIT", "type": "text" },
+                { "label": "Correo electrónico", "type": "text" }
+              ]
+            },
+            {
+              "type": "form",
+              "title": "Nuevo cliente - Factura",
+              "fields": [
+                { "label": "Nombre", "type": "text", "required": true },
+                { "label": "Correo electrónico", "type": "email", "required": true }
+              ]
+            },
+            {
+              "type": "form",
+              "title": "Nuevo cliente - Crédito Fiscal",
+              "fields": [
+                { "label": "Nombre", "type": "text", "required": true },
+                { "label": "Registro Fiscal", "type": "text", "required": true },
+                { "label": "NIT", "type": "text", "required": true },
+                { "label": "Giro / Actividad Económica", "type": "select", "required": true },
+                { "label": "Teléfono", "type": "text", "required": true },
+                { "label": "Departamento", "type": "select", "required": true },
+                { "label": "Municipio", "type": "select", "required": true },
+                { "label": "Distrito", "type": "select", "required": true },
+                { "label": "Dirección", "type": "textarea", "required": true }
+              ]
+            },
+            {
+              "type": "option",
+              "title": "Cliente por defecto",
+              "options": [{ "label": "Consumidor final", "value": "default" }]
+            }
+          ],
+          "validation": {
+            "rules": ["Debe seleccionarse un cliente existente o crearse uno nuevo para continuar"]
+          }
+        },
+        {
+          "name": "Resumen de Compra",
+          "sections": [
+            {
+              "type": "table",
+              "title": "Detalle de productos",
+              "columns": ["Identificador", "Nombre", "Cantidad", "Precio unitario", "Impuesto", "Subtotal"]
+            },
+            {
+              "type": "summary",
+              "title": "Cliente y documento tributario",
+              "fields": [{ "label": "Cliente seleccionado" }, { "label": "Tipo de documento tributario" }]
+            },
+            {
+              "type": "payment",
+              "title": "Método de pago",
+              "options": [
+                {
+                  "label": "Efectivo",
+                  "fields": [
+                    { "label": "Monto entregado", "type": "number", "required": true },
+                    { "label": "Vuelto", "type": "calculated" }
+                  ]
+                },
+                {
+                  "label": "Tarjeta",
+                  "fields": [
+                    { "label": "Estado de POS", "type": "status", "values": ["Listo para procesar", "Venta procesada"] }
+                  ]
+                }
+              ]
+            }
+          ],
+          "validation": {
+            "rules": ["Debe seleccionarse un método de pago antes de continuar"]
+          }
+        },
+        {
+          "name": "Estado de la Venta",
+          "sections": [
+            {
+              "type": "status",
+              "title": "Resultado de la venta",
+              "fields": [
+                { "label": "Estado", "values": ["Efectuada", "Rechazada"] },
+                { "label": "Razón del rechazo", "type": "text" }
+              ]
+            },
+            {
+              "type": "qr",
+              "title": "DTE emitido",
+              "description": "Escanea el QR para acceder al documento en el Ministerio de Hacienda"
+            },
+            {
+              "type": "action",
+              "title": "Opciones",
+              "buttons": [{ "label": "Imprimir comprobante", "action": "print" }]
+            }
+          ],
+          "validation": {
+            "rules": ["El estado de la venta debe estar definido (efectuada o rechazada)"]
+          }
+        }
+      ]
+    }
+  }
+}
