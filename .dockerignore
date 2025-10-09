@@ -1,0 +1,25 @@
+# Ignore node modules and build outputs
+node_modules/
+.next/
+out/
+build/
+
+# VCS and local files
+.git/
+.gitignore
+.DS_Store
+
+# Package manager stores
+.pnpm-store/
+
+# Env files
+.env*
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Cache
+.cache/

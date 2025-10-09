@@ -3,7 +3,7 @@
 #############################################
 FROM node:22-alpine AS builder
 
-ENV NODE_ENV=development
+ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
 # Dependencia recomendada para librerías nativas (sharp, etc.) en Alpine
