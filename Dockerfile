@@ -17,7 +17,8 @@ COPY package.json pnpm-lock.yaml ./
 # Usa corepack para gestionar pnpm de forma confiable
 RUN corepack enable \
   && corepack prepare pnpm@10.13.1 --activate \
-  && pnpm install --no-frozen-lockfile
+  && pnpm install --no-frozen-lockfile \
+  && pnpm approve-builds || true
 
 # Copia el resto del código y construye
 COPY . .
@@ -37,19 +38,15 @@ RUN apk add --no-cache libc6-compat
 
 WORKDIR /app
 
-# Copia package.json y node_modules ya podados de la etapa de build
-COPY --from=builder /app/package.json ./package.json
-COPY --from=builder /app/node_modules ./node_modules
-
-# Copia artefactos generados y assets necesarios
-COPY --from=builder /app/.next ./.next
+# Copia artefactos standalone generados y assets necesarios
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/public ./public
-COPY --from=builder /app/next.config.mjs ./next.config.mjs
 
 # Ejecuta como usuario no privilegiado
 USER node
 
 EXPOSE 3000
 
-# Usa el servidor de Next en producción
-CMD ["pnpm", "start"]
+# Usa el servidor standalone de Next en producción
+CMD ["node", "server.js"]
