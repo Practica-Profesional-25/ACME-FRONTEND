@@ -17,16 +17,17 @@ COPY package.json pnpm-lock.yaml ./
 # Usa corepack para gestionar pnpm de forma confiable
 RUN corepack enable \
   && corepack prepare pnpm@10.13.1 --activate \
-  && pnpm install --frozen-lockfile
+  && pnpm install --no-frozen-lockfile
 
 # Copia el resto del código y construye
 COPY . .
-RUN pnpm run build
+RUN pnpm run build \
+  && pnpm prune --prod
 
 #############################################
 # Runner stage: solo dependencias de producción y artefactos
 #############################################
-FROM node:2-alpine AS runner
+FROM node:22-alpine AS runner
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
@@ -36,11 +37,9 @@ RUN apk add --no-cache libc6-compat
 
 WORKDIR /app
 
-# Instala únicamente dependencias de producción
-COPY package.json pnpm-lock.yaml ./
-RUN corepack enable \
-  && corepack prepare pnpm@10.13.1 --activate \
-  && pnpm install --frozen-lockfile --prod
+# Copia package.json y node_modules ya podados de la etapa de build
+COPY --from=builder /app/package.json ./package.json
+COPY --from=builder /app/node_modules ./node_modules
 
 # Copia artefactos generados y assets necesarios
 COPY --from=builder /app/.next ./.next
