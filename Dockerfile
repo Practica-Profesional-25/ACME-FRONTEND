@@ -16,7 +16,7 @@ COPY package.json pnpm-lock.yaml ./
 
 # Usa corepack para gestionar pnpm de forma confiable
 RUN corepack enable \
-  && corepack prepare pnpm@8 --activate \
+  && corepack prepare pnpm@10.13.1 --activate \
   && pnpm install --frozen-lockfile
 
 # Copia el resto del código y construye
@@ -39,7 +39,7 @@ WORKDIR /app
 # Instala únicamente dependencias de producción
 COPY package.json pnpm-lock.yaml ./
 RUN corepack enable \
-  && corepack prepare pnpm@8 --activate \
+  && corepack prepare pnpm@10.13.1 --activate \
   && pnpm install --frozen-lockfile --prod
 
 # Copia artefactos generados y assets necesarios
