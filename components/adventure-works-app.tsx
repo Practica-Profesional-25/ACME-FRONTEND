@@ -10,8 +10,9 @@ import { SalesWizard } from "./sales-wizard"
 import { ProductManagement } from "./screens/product-management"
 import { CustomerManagement } from "./screens/customer-management"
 import { SalesMain } from "./screens/sales-main"
+import { redirect } from "next/navigation"
 
-type Screen = "ventas" | "productos" | "clientes" | "wizard"
+type Screen = "ventas" | "productos" | "clientes" | "wizard" | "logout"
 
 export function AdventureWorksApp() {
   const [currentScreen, setCurrentScreen] = useState<Screen>("ventas")
@@ -33,10 +34,8 @@ export function AdventureWorksApp() {
       return // Disabled during sale process
     }
 
-    if (value === "logout") {
-      // Handle logout logic here
-      console.log("Logging out...")
-      return
+    if(value === 'logout') {
+      redirect('/auth/logout')
     }
 
     setCurrentScreen(value)
