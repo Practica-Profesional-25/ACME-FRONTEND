@@ -6,15 +6,10 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import { Search, Plus, Trash2 } from "lucide-react"
+import { Search, Plus, Trash2, ShoppingCart } from "lucide-react"
 import type { SaleData, Product } from "../sales-wizard"
-
-interface ProductSelectionProps {
-  saleData: SaleData
-  setSaleData: (data: SaleData) => void
-}
+import { useToast } from "@/hooks/use-toast"
 
 const mockProducts = [
   // Bicicletas - Carretera
@@ -95,6 +90,11 @@ const subcategories = {
   Accesorios: ["Electrónicos", "Herramientas", "Iluminación", "Candados"],
 }
 
+interface ProductSelectionProps {
+  saleData: SaleData
+  setSaleData: (data: SaleData) => void
+}
+
 export function ProductSelection({ saleData, setSaleData }: ProductSelectionProps) {
   const [searchForm, setSearchForm] = useState({
     nombre: "",
@@ -104,6 +104,7 @@ export function ProductSelection({ saleData, setSaleData }: ProductSelectionProp
   })
   const [searchResults, setSearchResults] = useState(mockProducts)
   const [selectedQuantities, setSelectedQuantities] = useState<Record<string, number>>({})
+  const { toast } = useToast()
 
   const handleSearch = () => {
     let filtered = mockProducts
@@ -146,8 +147,16 @@ export function ProductSelection({ saleData, setSaleData }: ProductSelectionProp
     if (existingIndex >= 0) {
       updatedProducts = [...saleData.products]
       updatedProducts[existingIndex] = newProduct
+      toast({
+        title: "Producto actualizado",
+        description: `${product.name} - Cantidad: ${quantity}`,
+      })
     } else {
       updatedProducts = [...saleData.products, newProduct]
+      toast({
+        title: "Producto agregado",
+        description: `${product.name} - Cantidad: ${quantity}`,
+      })
     }
 
     setSaleData({
@@ -159,10 +168,18 @@ export function ProductSelection({ saleData, setSaleData }: ProductSelectionProp
   }
 
   const removeProduct = (productId: string) => {
+    const product = saleData.products.find((p) => p.id === productId)
     setSaleData({
       ...saleData,
       products: saleData.products.filter((p) => p.id !== productId),
     })
+    if (product) {
+      toast({
+        title: "Producto eliminado",
+        description: product.name,
+        variant: "destructive",
+      })
+    }
   }
 
   const updateQuantity = (productId: string, quantity: number) => {
@@ -185,190 +202,204 @@ export function ProductSelection({ saleData, setSaleData }: ProductSelectionProp
   const totalSale = saleData.products.reduce((sum, product) => sum + product.total, 0)
 
   return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Search className="h-5 w-5" />
-            Buscar productos
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-            <div>
-              <Label htmlFor="nombre">Nombre</Label>
-              <Input
-                id="nombre"
-                value={searchForm.nombre}
-                onChange={(e) => setSearchForm({ ...searchForm, nombre: e.target.value })}
-                placeholder="Buscar por nombre..."
-              />
-            </div>
-            <div>
-              <Label htmlFor="identificador">Identificador</Label>
-              <Input
-                id="identificador"
-                value={searchForm.identificador}
-                onChange={(e) => setSearchForm({ ...searchForm, identificador: e.target.value })}
-                placeholder="Código del producto..."
-              />
-            </div>
-            <div>
-              <Label htmlFor="categoria">Categoría</Label>
-              <Select
-                value={searchForm.categoria}
-                onValueChange={(value) => {
-                  setSearchForm({ ...searchForm, categoria: value, subcategoria: "" })
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Seleccionar categoría" />
-                </SelectTrigger>
-                <SelectContent>
-                  {categories.map((cat) => (
-                    <SelectItem key={cat} value={cat}>
-                      {cat}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label htmlFor="subcategoria">Subcategoría</Label>
-              <Select
-                value={searchForm.subcategoria}
-                onValueChange={(value) => setSearchForm({ ...searchForm, subcategoria: value })}
-                disabled={!searchForm.categoria}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Seleccionar subcategoría" />
-                </SelectTrigger>
-                <SelectContent>
-                  {searchForm.categoria &&
-                    subcategories[searchForm.categoria as keyof typeof subcategories]?.map((subcat) => (
-                      <SelectItem key={subcat} value={subcat}>
-                        {subcat}
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="lg:col-span-2 space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Search className="h-5 w-5" />
+              Buscar productos
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+              <div>
+                <Label htmlFor="nombre">Nombre</Label>
+                <Input
+                  id="nombre"
+                  value={searchForm.nombre}
+                  onChange={(e) => setSearchForm({ ...searchForm, nombre: e.target.value })}
+                  placeholder="Buscar por nombre..."
+                />
+              </div>
+              <div>
+                <Label htmlFor="identificador">Identificador</Label>
+                <Input
+                  id="identificador"
+                  value={searchForm.identificador}
+                  onChange={(e) => setSearchForm({ ...searchForm, identificador: e.target.value })}
+                  placeholder="Código del producto..."
+                />
+              </div>
+              <div>
+                <Label htmlFor="categoria">Categoría</Label>
+                <Select
+                  value={searchForm.categoria}
+                  onValueChange={(value) => {
+                    setSearchForm({ ...searchForm, categoria: value, subcategoria: "" })
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar categoría" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.map((cat) => (
+                      <SelectItem key={cat} value={cat}>
+                        {cat}
                       </SelectItem>
                     ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <Button onClick={handleSearch} className="bg-primary hover:bg-primary/90">
-            <Search className="h-4 w-4 mr-2" />
-            Buscar
-          </Button>
-
-          {searchResults.length > 0 && (
-            <div className="mt-6">
-              <h3 className="text-lg font-semibold mb-4">Resultados de búsqueda</h3>
-              <div className="grid gap-4">
-                {searchResults.map((product) => (
-                  <div key={product.id} className="flex items-center justify-between p-4 border rounded-lg">
-                    <div className="flex-1">
-                      <h4 className="font-medium">{product.name}</h4>
-                      <p className="text-sm text-muted-foreground">ID: {product.id}</p>
-                      <div className="flex gap-2 mt-1">
-                        <Badge variant="secondary">{product.category}</Badge>
-                        <Badge variant="outline">{product.subcategory}</Badge>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <span className="font-semibold">${product.price.toFixed(2)}</span>
-                      <div className="flex items-center gap-2">
-                        <Label htmlFor={`qty-${product.id}`}>Cantidad:</Label>
-                        <Input
-                          id={`qty-${product.id}`}
-                          type="number"
-                          min="1"
-                          value={selectedQuantities[product.id] || 1}
-                          onChange={(e) =>
-                            setSelectedQuantities({
-                              ...selectedQuantities,
-                              [product.id]: Number.parseInt(e.target.value) || 1,
-                            })
-                          }
-                          className="w-20"
-                        />
-                      </div>
-                      <Button
-                        onClick={() => addProduct(product)}
-                        size="sm"
-                        className="bg-secondary hover:bg-secondary/90"
-                      >
-                        <Plus className="h-4 w-4 mr-1" />
-                        Agregar
-                      </Button>
-                    </div>
-                  </div>
-                ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="subcategoria">Subcategoría</Label>
+                <Select
+                  value={searchForm.subcategoria}
+                  onValueChange={(value) => setSearchForm({ ...searchForm, subcategoria: value })}
+                  disabled={!searchForm.categoria}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar subcategoría" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {searchForm.categoria &&
+                      subcategories[searchForm.categoria as keyof typeof subcategories]?.map((subcat) => (
+                        <SelectItem key={subcat} value={subcat}>
+                          {subcat}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
-          )}
-        </CardContent>
-      </Card>
+            <Button onClick={handleSearch} className="bg-primary hover:bg-primary/90">
+              <Search className="h-4 w-4 mr-2" />
+              Buscar
+            </Button>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Productos seleccionados</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {saleData.products.length === 0 ? (
-            <p className="text-muted-foreground text-center py-8">
-              No hay productos seleccionados. Busque y agregue productos para continuar.
-            </p>
-          ) : (
-            <>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Identificador</TableHead>
-                    <TableHead>Nombre</TableHead>
-                    <TableHead>Cantidad</TableHead>
-                    <TableHead>Precio unitario</TableHead>
-                    <TableHead>Subtotal</TableHead>
-                    <TableHead>Impuesto</TableHead>
-                    <TableHead>Total</TableHead>
-                    <TableHead>Acciones</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {saleData.products.map((product) => (
-                    <TableRow key={product.id}>
-                      <TableCell>{product.id}</TableCell>
-                      <TableCell>{product.name}</TableCell>
-                      <TableCell>
-                        <Input
-                          type="number"
-                          min="1"
-                          value={product.quantity}
-                          onChange={(e) => updateQuantity(product.id, Number.parseInt(e.target.value) || 1)}
-                          className="w-20"
-                        />
-                      </TableCell>
-                      <TableCell>${product.unitPrice.toFixed(2)}</TableCell>
-                      <TableCell>${product.subtotal.toFixed(2)}</TableCell>
-                      <TableCell>${product.tax.toFixed(2)}</TableCell>
-                      <TableCell className="font-semibold">${product.total.toFixed(2)}</TableCell>
-                      <TableCell>
-                        <Button variant="destructive" size="sm" onClick={() => removeProduct(product.id)}>
-                          <Trash2 className="h-4 w-4" />
+            {searchResults.length > 0 && (
+              <div className="mt-6">
+                <h3 className="text-lg font-semibold mb-4">Resultados de búsqueda</h3>
+                <div className="grid gap-4">
+                  {searchResults.map((product) => (
+                    <div key={product.id} className="flex items-center justify-between p-4 border rounded-lg">
+                      <div className="flex-1">
+                        <h4 className="font-medium">{product.name}</h4>
+                        <p className="text-sm text-muted-foreground">ID: {product.id}</p>
+                        <div className="flex gap-2 mt-1">
+                          <Badge variant="secondary">{product.category}</Badge>
+                          <Badge variant="outline">{product.subcategory}</Badge>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <span className="font-semibold">${product.price.toFixed(2)}</span>
+                        <div className="flex items-center gap-2">
+                          <Label htmlFor={`qty-${product.id}`}>Cantidad:</Label>
+                          <Input
+                            id={`qty-${product.id}`}
+                            type="number"
+                            min="1"
+                            value={selectedQuantities[product.id] || 1}
+                            onChange={(e) =>
+                              setSelectedQuantities({
+                                ...selectedQuantities,
+                                [product.id]: Number.parseInt(e.target.value) || 1,
+                              })
+                            }
+                            className="w-20"
+                          />
+                        </div>
+                        <Button
+                          onClick={() => addProduct(product)}
+                          size="sm"
+                          className="bg-secondary hover:bg-secondary/90"
+                        >
+                          <Plus className="h-4 w-4 mr-1" />
+                          Agregar
                         </Button>
-                      </TableCell>
-                    </TableRow>
+                      </div>
+                    </div>
                   ))}
-                </TableBody>
-              </Table>
-              <div className="mt-4 p-4 bg-muted rounded-lg">
-                <div className="flex justify-between items-center">
-                  <span className="text-lg font-semibold">Total de la venta:</span>
-                  <span className="text-2xl font-bold text-primary">${totalSale.toFixed(2)}</span>
                 </div>
               </div>
-            </>
-          )}
-        </CardContent>
-      </Card>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="lg:col-span-1">
+        <div className="lg:sticky lg:top-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <ShoppingCart className="h-5 w-5" />
+                Productos seleccionados
+                {saleData.products.length > 0 && (
+                  <Badge variant="secondary" className="ml-auto">
+                    {saleData.products.length}
+                  </Badge>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {saleData.products.length === 0 ? (
+                <div className="text-center py-8">
+                  <ShoppingCart className="h-12 w-12 mx-auto text-muted-foreground mb-2" />
+                  <p className="text-muted-foreground text-sm">No hay productos seleccionados</p>
+                </div>
+              ) : (
+                <>
+                  <div className="space-y-3 max-h-[400px] overflow-y-auto mb-4">
+                    {saleData.products.map((product) => (
+                      <div key={product.id} className="p-3 border rounded-lg space-y-2">
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1 pr-2">
+                            <p className="font-medium text-sm leading-tight">{product.name}</p>
+                            <p className="text-xs text-muted-foreground">ID: {product.id}</p>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeProduct(product.id)}
+                            className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Label htmlFor={`selected-qty-${product.id}`} className="text-xs">
+                            Cant:
+                          </Label>
+                          <Input
+                            id={`selected-qty-${product.id}`}
+                            type="number"
+                            min="1"
+                            value={product.quantity}
+                            onChange={(e) => updateQuantity(product.id, Number.parseInt(e.target.value) || 1)}
+                            className="h-8 w-16 text-sm"
+                          />
+                          <span className="text-xs text-muted-foreground">×</span>
+                          <span className="text-sm">${product.unitPrice.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between items-center pt-2 border-t">
+                          <span className="text-xs text-muted-foreground">Total:</span>
+                          <span className="font-semibold text-sm">${product.total.toFixed(2)}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="p-4 bg-primary/10 rounded-lg border border-primary/20">
+                    <div className="flex justify-between items-center">
+                      <span className="font-semibold">Total:</span>
+                      <span className="text-xl font-bold text-primary">${totalSale.toFixed(2)}</span>
+                    </div>
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     </div>
   )
 }
