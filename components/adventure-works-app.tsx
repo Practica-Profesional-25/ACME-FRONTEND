@@ -11,15 +11,17 @@ import { ProductManagement } from "./screens/product-management"
 import { CustomerManagement } from "./screens/customer-management"
 import { SalesMain } from "./screens/sales-main"
 import { redirect } from "next/navigation"
+import { useUser } from "@/contexts/UserContext"
 
 type Screen = "ventas" | "productos" | "clientes" | "wizard" | "logout"
 
 export function AdventureWorksApp() {
   const [currentScreen, setCurrentScreen] = useState<Screen>("ventas")
   const [isInSaleProcess, setIsInSaleProcess] = useState(false)
+  const userInfo = useUser();
 
   // Mock user and branch data
-  const user = { nombre: "Juan Pérez" }
+  const user = { nombre: userInfo?.name }
   const sucursal = { nombre: "Sucursal Centro" }
 
   const sidebarOptions = [
