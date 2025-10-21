@@ -1,209 +1,343 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Button } from "@/components/ui/button"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Badge } from "@/components/ui/badge"
-import { Search, Plus, Trash2, ShoppingCart } from "lucide-react"
-import type { SaleData, Product } from "../sales-wizard"
-import { useToast } from "@/hooks/use-toast"
+import { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { Search, Plus, Trash2, ShoppingCart, Loader2 } from "lucide-react";
+import type { SaleData, Product } from "../sales-wizard";
+import { useToast } from "@/hooks/use-toast";
+import { getProducts } from "@/lib/api";
+import type { ApiProduct } from "@/lib/types";
+import { apiProductToSaleProduct } from "@/lib/types";
 
 const mockProducts = [
-  // Bicicletas - Carretera
-  { id: "B001", name: "Trek Domane SL 5 2024", category: "Bicicletas", subcategory: "Carretera", price: 2899.99 },
+  // Bikes - Road
+  {
+    id: "B001",
+    name: "Trek Domane SL 5 2024",
+    category: "Bikes",
+    subcategory: "Road",
+    price: 2899.99,
+  },
   {
     id: "B002",
     name: "Specialized Tarmac SL7 Expert 2024",
-    category: "Bicicletas",
-    subcategory: "Carretera",
+    category: "Bikes",
+    subcategory: "Road",
     price: 4299.99,
   },
-  { id: "B003", name: "Giant Contend AR 3 2024", category: "Bicicletas", subcategory: "Carretera", price: 1199.99 },
-  // Bicicletas - Montaña
-  { id: "B004", name: "Trek Fuel EX 8 2024", category: "Bicicletas", subcategory: "Montaña", price: 3499.99 },
+  {
+    id: "B003",
+    name: "Giant Contend AR 3 2024",
+    category: "Bikes",
+    subcategory: "Road",
+    price: 1199.99,
+  },
+  // Bikes - Mountain
+  {
+    id: "B004",
+    name: "Trek Fuel EX 8 2024",
+    category: "Bikes",
+    subcategory: "Mountain",
+    price: 3499.99,
+  },
   {
     id: "B005",
     name: "Specialized Stumpjumper Comp 2024",
-    category: "Bicicletas",
-    subcategory: "Montaña",
+    category: "Bikes",
+    subcategory: "Mountain",
     price: 3899.99,
   },
-  // Bicicletas - Híbridas
-  { id: "B006", name: "Trek FX 3 Disc 2024", category: "Bicicletas", subcategory: "Híbridas", price: 899.99 },
-  { id: "B007", name: "Giant Escape 3 2024", category: "Bicicletas", subcategory: "Híbridas", price: 549.99 },
-  // Bicicletas - Eléctricas
-  { id: "B008", name: "Trek Verve+ 2 Lowstep 2024", category: "Bicicletas", subcategory: "Eléctricas", price: 2799.99 },
-  // Cascos
-  { id: "C001", name: "Casco Giro Syntax MIPS", category: "Cascos", subcategory: "Carretera", price: 149.99 },
-  { id: "C002", name: "Casco Specialized Align II", category: "Cascos", subcategory: "Urbanos", price: 49.99 },
-  { id: "C003", name: "Casco Bell Super DH MIPS", category: "Cascos", subcategory: "Montaña", price: 299.99 },
-  // Guantes
-  { id: "G001", name: "Guantes Pearl Izumi Elite Gel", category: "Guantes", subcategory: "Carretera", price: 39.99 },
-  { id: "G002", name: "Guantes Specialized BG Grail", category: "Guantes", subcategory: "Carretera", price: 34.99 },
-  { id: "G003", name: "Guantes Fox Ranger MTB", category: "Guantes", subcategory: "Montaña", price: 29.99 },
-  // Accesorios
+  // Bikes - Hybrid
+  {
+    id: "B006",
+    name: "Trek FX 3 Disc 2024",
+    category: "Bikes",
+    subcategory: "Hybrid",
+    price: 899.99,
+  },
+  {
+    id: "B007",
+    name: "Giant Escape 3 2024",
+    category: "Bikes",
+    subcategory: "Hybrid",
+    price: 549.99,
+  },
+  // Bikes - Electric
+  {
+    id: "B008",
+    name: "Trek Verve+ 2 Lowstep 2024",
+    category: "Bikes",
+    subcategory: "Electric",
+    price: 2799.99,
+  },
+  // Clothing - Road
+  {
+    id: "C001",
+    name: "Casco Giro Syntax MIPS",
+    category: "Clothing",
+    subcategory: "Road",
+    price: 149.99,
+  },
+  {
+    id: "C002",
+    name: "Casco Specialized Align II",
+    category: "Clothing",
+    subcategory: "Road",
+    price: 49.99,
+  },
+  {
+    id: "C003",
+    name: "Casco Bell Super DH MIPS",
+    category: "Clothing",
+    subcategory: "Mountain",
+    price: 299.99,
+  },
+  // Clothing - Road
+  {
+    id: "G001",
+    name: "Guantes Pearl Izumi Elite Gel",
+    category: "Clothing",
+    subcategory: "Road",
+    price: 39.99,
+  },
+  {
+    id: "G002",
+    name: "Guantes Specialized BG Grail",
+    category: "Clothing",
+    subcategory: "Road",
+    price: 34.99,
+  },
+  {
+    id: "G003",
+    name: "Guantes Fox Ranger MTB",
+    category: "Clothing",
+    subcategory: "Mountain",
+    price: 29.99,
+  },
+  // Accessories
   {
     id: "A001",
     name: "Ciclocomputador Wahoo ELEMNT BOLT V2",
-    category: "Accesorios",
-    subcategory: "Electrónicos",
+    category: "Accessories",
+    subcategory: "Electronics",
     price: 279.99,
   },
   {
     id: "A002",
     name: "Ciclocomputador Lezyne Mega XL GPS",
-    category: "Accesorios",
-    subcategory: "Electrónicos",
+    category: "Accessories",
+    subcategory: "Electronics",
     price: 199.99,
   },
   {
     id: "A003",
     name: "Soporte Park Tool PCS-10.2",
-    category: "Accesorios",
-    subcategory: "Herramientas",
+    category: "Accessories",
+    subcategory: "Tools",
     price: 189.99,
   },
   {
     id: "A004",
     name: "Candado Kryptonite Evolution Series 4",
-    category: "Accesorios",
-    subcategory: "Candados",
+    category: "Accessories",
+    subcategory: "Locks",
     price: 89.99,
   },
   {
     id: "A005",
     name: "Luz Lezyne Macro Drive 1400XL",
-    category: "Accesorios",
-    subcategory: "Iluminación",
+    category: "Accessories",
+    subcategory: "Lighting",
     price: 149.99,
   },
-]
+];
 
-const categories = ["Bicicletas", "Cascos", "Guantes", "Accesorios"]
+const categories = [
+  "Bikes",
+  "Components",
+  "Clothing", 
+  "Accessories",
+];
 const subcategories = {
-  Bicicletas: ["Carretera", "Montaña", "Híbridas", "Eléctricas"],
-  Cascos: ["Carretera", "Montaña", "Urbanos"],
-  Guantes: ["Carretera", "Montaña", "Invierno"],
-  Accesorios: ["Electrónicos", "Herramientas", "Iluminación", "Candados"],
-}
+  Bikes: ["Road", "Mountain", "Hybrid", "Electric"],
+  Components: ["Pedals", "Chains", "Gears", "Brakes"],
+  Clothing: ["Road", "Mountain", "Winter"],
+  Accessories: ["Electronics", "Tools", "Lighting", "Locks"],
+};
 
 interface ProductSelectionProps {
-  saleData: SaleData
-  setSaleData: (data: SaleData) => void
+  saleData: SaleData;
+  setSaleData: (data: SaleData) => void;
 }
 
-export function ProductSelection({ saleData, setSaleData }: ProductSelectionProps) {
+export function ProductSelection({
+  saleData,
+  setSaleData,
+}: ProductSelectionProps) {
   const [searchForm, setSearchForm] = useState({
     nombre: "",
     identificador: "",
     categoria: "",
     subcategoria: "",
-  })
-  const [searchResults, setSearchResults] = useState(mockProducts)
-  const [selectedQuantities, setSelectedQuantities] = useState<Record<string, number>>({})
-  const { toast } = useToast()
+  });
+  const [searchResults, setSearchResults] = useState<ApiProduct[]>([]);
+  const [selectedQuantities, setSelectedQuantities] = useState<
+    Record<string, number>
+  >({});
+  const [loading, setLoading] = useState(false);
+  const { toast } = useToast();
 
-  const handleSearch = () => {
-    let filtered = mockProducts
+  // Cargar productos iniciales
+  useEffect(() => {
+    handleSearch();
+  }, []);
 
-    if (searchForm.nombre) {
-      filtered = filtered.filter((p) => p.name.toLowerCase().includes(searchForm.nombre.toLowerCase()))
-    }
-    if (searchForm.identificador) {
-      filtered = filtered.filter((p) => p.id.toLowerCase().includes(searchForm.identificador.toLowerCase()))
-    }
-    if (searchForm.categoria) {
-      filtered = filtered.filter((p) => p.category === searchForm.categoria)
-    }
-    if (searchForm.subcategoria) {
-      filtered = filtered.filter((p) => p.subcategory === searchForm.subcategoria)
-    }
+  const handleSearch = async () => {
+    try {
+      setLoading(true);
+      const filters = {
+        ...(searchForm.nombre && { nombre: searchForm.nombre }),
+        ...(searchForm.identificador && {
+          identificador: searchForm.identificador,
+        }),
+        ...(searchForm.categoria && searchForm.categoria !== "all" && { categoria: searchForm.categoria }),
+        ...(searchForm.subcategoria && searchForm.subcategoria !== "all" && {
+          subcategoria: searchForm.subcategoria,
+        }),
+        limit: 50,
+      };
 
-    setSearchResults(filtered)
-  }
-
-  const addProduct = (product: any) => {
-    const quantity = selectedQuantities[product.id] || 1
-    const subtotal = product.price * quantity
-    const tax = subtotal * 0.13 // 13% IVA
-    const total = subtotal + tax
-
-    const newProduct: Product = {
-      id: product.id,
-      name: product.name,
-      quantity,
-      unitPrice: product.price,
-      subtotal,
-      tax,
-      total,
-    }
-
-    const existingIndex = saleData.products.findIndex((p) => p.id === product.id)
-    let updatedProducts
-
-    if (existingIndex >= 0) {
-      updatedProducts = [...saleData.products]
-      updatedProducts[existingIndex] = newProduct
+      const response = await getProducts(filters);
+      setSearchResults(response.data);
+    } catch (error) {
+      console.error("Error loading products:", error);
       toast({
-        title: "Producto actualizado",
-        description: `${product.name} - Cantidad: ${quantity}`,
-      })
+        title: "Error",
+        description: "No se pudieron cargar los productos.",
+        variant: "destructive",
+      });
+      setSearchResults([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const addProduct = (apiProduct: ApiProduct) => {
+    const quantity = selectedQuantities[apiProduct.id] || 1;
+    const saleProduct = apiProductToSaleProduct(apiProduct, quantity);
+
+    // Convertir SaleProduct a Product para el wizard
+    const product: Product = {
+      id: saleProduct.id,
+      name: saleProduct.name,
+      unitPrice: saleProduct.unitPrice,
+      quantity: quantity,
+      subtotal: saleProduct.subtotal,
+      tax: saleProduct.tax,
+      total: saleProduct.total,
+    };
+
+    const existingProduct = saleData.products.find((p) => p.id === product.id);
+
+    if (existingProduct) {
+      // Si ya existe, incrementar cantidad
+      setSaleData({
+        ...saleData,
+        products: saleData.products.map((p) =>
+          p.id === product.id
+            ? {
+                ...p,
+                quantity: p.quantity + quantity,
+                total: p.unitPrice * (p.quantity + quantity),
+              }
+            : p
+        ),
+      });
+      toast({
+        title: "Cantidad actualizada",
+        description: `${product.name} - Nueva cantidad: ${
+          existingProduct.quantity + quantity
+        }`,
+      });
     } else {
-      updatedProducts = [...saleData.products, newProduct]
+      // Si no existe, agregarlo
+      setSaleData({
+        ...saleData,
+        products: [...saleData.products, product],
+      });
       toast({
         title: "Producto agregado",
-        description: `${product.name} - Cantidad: ${quantity}`,
-      })
+        description: product.name,
+      });
+    }
+
+    // Reset quantity for this product
+    setSelectedQuantities({
+      ...selectedQuantities,
+      [apiProduct.id]: 1,
+    });
+  };
+
+  const updateQuantity = (productId: string, newQuantity: number) => {
+    if (newQuantity <= 0) {
+      removeProduct(productId);
+      return;
     }
 
     setSaleData({
       ...saleData,
-      products: updatedProducts,
-    })
-
-    setSelectedQuantities({ ...selectedQuantities, [product.id]: 1 })
-  }
+      products: saleData.products.map((p) =>
+        p.id === productId
+          ? { ...p, quantity: newQuantity, total: p.unitPrice * newQuantity }
+          : p
+      ),
+    });
+  };
 
   const removeProduct = (productId: string) => {
-    const product = saleData.products.find((p) => p.id === productId)
+    const product = saleData.products.find((p) => p.id === productId);
     setSaleData({
       ...saleData,
       products: saleData.products.filter((p) => p.id !== productId),
-    })
+    });
     if (product) {
       toast({
         title: "Producto eliminado",
         description: product.name,
         variant: "destructive",
-      })
+      });
     }
-  }
+  };
 
-  const updateQuantity = (productId: string, quantity: number) => {
-    const updatedProducts = saleData.products.map((product) => {
-      if (product.id === productId) {
-        const subtotal = product.unitPrice * quantity
-        const tax = subtotal * 0.13
-        const total = subtotal + tax
-        return { ...product, quantity, subtotal, tax, total }
-      }
-      return product
-    })
+  const totalSale = saleData.products.reduce(
+    (sum, product) => sum + product.total,
+    0
+  );
 
-    setSaleData({
-      ...saleData,
-      products: updatedProducts,
-    })
-  }
-
-  const totalSale = saleData.products.reduce((sum, product) => sum + product.total, 0)
+  const getStockBadge = (stock: number) => {
+    if (stock === 0) {
+      return <Badge variant="destructive">Sin stock</Badge>;
+    } else if (stock <= 5) {
+      return <Badge variant="secondary">Stock bajo ({stock})</Badge>;
+    } else {
+      return <Badge variant="default">{stock} unidades</Badge>;
+    }
+  };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <div className="lg:col-span-2 space-y-6">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="lg:col-span-1">
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -211,38 +345,50 @@ export function ProductSelection({ saleData, setSaleData }: ProductSelectionProp
               Buscar productos
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="nombre">Nombre</Label>
                 <Input
                   id="nombre"
-                  value={searchForm.nombre}
-                  onChange={(e) => setSearchForm({ ...searchForm, nombre: e.target.value })}
                   placeholder="Buscar por nombre..."
+                  value={searchForm.nombre}
+                  onChange={(e) =>
+                    setSearchForm({ ...searchForm, nombre: e.target.value })
+                  }
                 />
               </div>
               <div>
                 <Label htmlFor="identificador">Identificador</Label>
                 <Input
                   id="identificador"
-                  value={searchForm.identificador}
-                  onChange={(e) => setSearchForm({ ...searchForm, identificador: e.target.value })}
                   placeholder="Código del producto..."
+                  value={searchForm.identificador}
+                  onChange={(e) =>
+                    setSearchForm({
+                      ...searchForm,
+                      identificador: e.target.value,
+                    })
+                  }
                 />
               </div>
               <div>
                 <Label htmlFor="categoria">Categoría</Label>
                 <Select
                   value={searchForm.categoria}
-                  onValueChange={(value) => {
-                    setSearchForm({ ...searchForm, categoria: value, subcategoria: "" })
-                  }}
+                  onValueChange={(value) =>
+                    setSearchForm({
+                      ...searchForm,
+                      categoria: value,
+                      subcategoria: "",
+                    })
+                  }
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Seleccionar categoría" />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="all">Todas las categorías</SelectItem>
                     {categories.map((cat) => (
                       <SelectItem key={cat} value={cat}>
                         {cat}
@@ -255,15 +401,20 @@ export function ProductSelection({ saleData, setSaleData }: ProductSelectionProp
                 <Label htmlFor="subcategoria">Subcategoría</Label>
                 <Select
                   value={searchForm.subcategoria}
-                  onValueChange={(value) => setSearchForm({ ...searchForm, subcategoria: value })}
-                  disabled={!searchForm.categoria}
+                  onValueChange={(value) =>
+                    setSearchForm({ ...searchForm, subcategoria: value })
+                  }
+                  disabled={!searchForm.categoria || searchForm.categoria === "all"}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Seleccionar subcategoría" />
                   </SelectTrigger>
                   <SelectContent>
-                    {searchForm.categoria &&
-                      subcategories[searchForm.categoria as keyof typeof subcategories]?.map((subcat) => (
+                    <SelectItem value="all">Todas las subcategorías</SelectItem>
+                    {searchForm.categoria && searchForm.categoria !== "all" &&
+                      subcategories[
+                        searchForm.categoria as keyof typeof subcategories
+                      ]?.map((subcat) => (
                         <SelectItem key={subcat} value={subcat}>
                           {subcat}
                         </SelectItem>
@@ -272,38 +423,75 @@ export function ProductSelection({ saleData, setSaleData }: ProductSelectionProp
                 </Select>
               </div>
             </div>
-            <Button onClick={handleSearch} className="bg-primary hover:bg-primary/90">
+            <Button onClick={handleSearch} className="w-full">
               <Search className="h-4 w-4 mr-2" />
-              Buscar
+              Buscar productos
             </Button>
 
-            {searchResults.length > 0 && (
-              <div className="mt-6">
-                <h3 className="text-lg font-semibold mb-4">Resultados de búsqueda</h3>
-                <div className="grid gap-4">
-                  {searchResults.map((product) => (
-                    <div key={product.id} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div className="flex-1">
-                        <h4 className="font-medium">{product.name}</h4>
-                        <p className="text-sm text-muted-foreground">ID: {product.id}</p>
-                        <div className="flex gap-2 mt-1">
-                          <Badge variant="secondary">{product.category}</Badge>
-                          <Badge variant="outline">{product.subcategory}</Badge>
+            {loading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-8 w-8 animate-spin" />
+                <span className="ml-2">Buscando productos...</span>
+              </div>
+            ) : (
+              <div className="space-y-3 max-h-96 overflow-y-auto">
+                {searchResults.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Search className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>No se encontraron productos</p>
+                    <p className="text-sm">Ajusta los criterios de búsqueda</p>
+                  </div>
+                ) : (
+                  searchResults.map((product) => (
+                    <div
+                      key={product.id}
+                      className="p-4 border rounded-lg space-y-3"
+                    >
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <h4 className="font-medium">{product.nombre}</h4>
+                          <p className="text-sm text-muted-foreground">
+                            ID: {product.identificador}
+                          </p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <Badge variant="secondary">
+                              {product.categoria || "Sin categoría"}
+                            </Badge>
+                            {product.subcategoria && (
+                              <Badge variant="outline">
+                                {product.subcategoria}
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-semibold">
+                            {product.precio > 0
+                              ? `$${product.precio.toFixed(2)}`
+                              : "Sin precio"}
+                          </p>
+                          {getStockBadge(product.stock)}
                         </div>
                       </div>
-                      <div className="flex items-center gap-4">
-                        <span className="font-semibold">${product.price.toFixed(2)}</span>
+                      <div className="flex items-center gap-2">
                         <div className="flex items-center gap-2">
-                          <Label htmlFor={`qty-${product.id}`}>Cantidad:</Label>
+                          <Label
+                            htmlFor={`qty-${product.id}`}
+                            className="text-sm"
+                          >
+                            Cantidad:
+                          </Label>
                           <Input
                             id={`qty-${product.id}`}
                             type="number"
                             min="1"
+                            max={product.stock}
                             value={selectedQuantities[product.id] || 1}
                             onChange={(e) =>
                               setSelectedQuantities({
                                 ...selectedQuantities,
-                                [product.id]: Number.parseInt(e.target.value) || 1,
+                                [product.id]:
+                                  Number.parseInt(e.target.value) || 1,
                               })
                             }
                             className="w-20"
@@ -312,6 +500,7 @@ export function ProductSelection({ saleData, setSaleData }: ProductSelectionProp
                         <Button
                           onClick={() => addProduct(product)}
                           size="sm"
+                          disabled={product.stock === 0}
                           className="bg-secondary hover:bg-secondary/90"
                         >
                           <Plus className="h-4 w-4 mr-1" />
@@ -319,8 +508,8 @@ export function ProductSelection({ saleData, setSaleData }: ProductSelectionProp
                         </Button>
                       </div>
                     </div>
-                  ))}
-                </div>
+                  ))
+                )}
               </div>
             )}
           </CardContent>
@@ -345,17 +534,26 @@ export function ProductSelection({ saleData, setSaleData }: ProductSelectionProp
               {saleData.products.length === 0 ? (
                 <div className="text-center py-8">
                   <ShoppingCart className="h-12 w-12 mx-auto text-muted-foreground mb-2" />
-                  <p className="text-muted-foreground text-sm">No hay productos seleccionados</p>
+                  <p className="text-muted-foreground text-sm">
+                    No hay productos seleccionados
+                  </p>
                 </div>
               ) : (
                 <>
                   <div className="space-y-3 max-h-[400px] overflow-y-auto mb-4">
                     {saleData.products.map((product) => (
-                      <div key={product.id} className="p-3 border rounded-lg space-y-2">
+                      <div
+                        key={product.id}
+                        className="p-3 border rounded-lg space-y-2"
+                      >
                         <div className="flex justify-between items-start">
                           <div className="flex-1 pr-2">
-                            <p className="font-medium text-sm leading-tight">{product.name}</p>
-                            <p className="text-xs text-muted-foreground">ID: {product.id}</p>
+                            <p className="font-medium text-sm leading-tight">
+                              {product.name}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              ID: {product.id}
+                            </p>
                           </div>
                           <Button
                             variant="ghost"
@@ -367,7 +565,10 @@ export function ProductSelection({ saleData, setSaleData }: ProductSelectionProp
                           </Button>
                         </div>
                         <div className="flex items-center gap-2">
-                          <Label htmlFor={`selected-qty-${product.id}`} className="text-xs">
+                          <Label
+                            htmlFor={`selected-qty-${product.id}`}
+                            className="text-xs"
+                          >
                             Cant:
                           </Label>
                           <Input
@@ -375,15 +576,28 @@ export function ProductSelection({ saleData, setSaleData }: ProductSelectionProp
                             type="number"
                             min="1"
                             value={product.quantity}
-                            onChange={(e) => updateQuantity(product.id, Number.parseInt(e.target.value) || 1)}
+                            onChange={(e) =>
+                              updateQuantity(
+                                product.id,
+                                Number.parseInt(e.target.value) || 1
+                              )
+                            }
                             className="h-8 w-16 text-sm"
                           />
-                          <span className="text-xs text-muted-foreground">×</span>
-                          <span className="text-sm">${product.unitPrice.toFixed(2)}</span>
+                          <span className="text-xs text-muted-foreground">
+                            ×
+                          </span>
+                          <span className="text-sm">
+                            ${product.unitPrice.toFixed(2)}
+                          </span>
                         </div>
                         <div className="flex justify-between items-center pt-2 border-t">
-                          <span className="text-xs text-muted-foreground">Total:</span>
-                          <span className="font-semibold text-sm">${product.total.toFixed(2)}</span>
+                          <span className="text-xs text-muted-foreground">
+                            Total:
+                          </span>
+                          <span className="font-semibold text-sm">
+                            ${product.total.toFixed(2)}
+                          </span>
                         </div>
                       </div>
                     ))}
@@ -391,7 +605,9 @@ export function ProductSelection({ saleData, setSaleData }: ProductSelectionProp
                   <div className="p-4 bg-primary/10 rounded-lg border border-primary/20">
                     <div className="flex justify-between items-center">
                       <span className="font-semibold">Total:</span>
-                      <span className="text-xl font-bold text-primary">${totalSale.toFixed(2)}</span>
+                      <span className="text-xl font-bold text-primary">
+                        ${totalSale.toFixed(2)}
+                      </span>
                     </div>
                   </div>
                 </>
@@ -401,5 +617,5 @@ export function ProductSelection({ saleData, setSaleData }: ProductSelectionProp
         </div>
       </div>
     </div>
-  )
+  );
 }
