@@ -7,20 +7,20 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Letting Auth0 handle special and public routes
-  // if (PUBLIC_PATHS.includes(pathname) || pathname.startsWith("/auth")) {
-  //   return auth0.middleware(request);
-  // }
+  if (PUBLIC_PATHS.includes(pathname) || pathname.startsWith("/auth")) {
+    return auth0.middleware(request);
+  }
 
-  // // For personalized protected pages
-  // const session = (await auth0.getSession(request)) || {
-  //   user: {
-  //     sub: "asdasdasd",
-  //   },
-  // };
+  // For personalized protected pages
+  const session = (await auth0.getSession(request)) || {
+    user: {
+      sub: "asdasdasd",
+    },
+  };
 
-  // if (!session?.user) {
-  //   return NextResponse.redirect(new URL("/auth/login", request.url));
-  // }
+  if (!session?.user) {
+    return NextResponse.redirect(new URL("/auth/login", request.url));
+  }
 
   return NextResponse.next();
 }

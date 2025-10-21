@@ -3,6 +3,23 @@
 #############################################
 FROM node:22-alpine AS builder
 
+# Dependencia recomendada para librerías nativas (sharp, etc.) en Alpine
+RUN apk add --no-cache libc6-compat
+
+WORKDIR /app
+
+# Copia solo archivos de dependencias para aprovechar el cache
+COPY package.json pnpm-lock.yaml ./
+
+# Usa corepack para gestionar pnpm de forma confiable
+RUN corepack enable \
+  && corepack prepare pnpm@10.13.1 --activate \
+  && pnpm approve-builds \
+  && pnpm install --no-frozen-lockfile
+
+# Copia el resto del código y construye
+COPY . .
+
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ARG AUTH0_SECRET
@@ -21,22 +38,6 @@ ENV AUTH0_CLIENT_SECRET=${AUTH0_CLIENT_SECRET}
 ENV GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
 ENV GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
 
-# Dependencia recomendada para librerías nativas (sharp, etc.) en Alpine
-RUN apk add --no-cache libc6-compat
-
-WORKDIR /app
-
-# Copia solo archivos de dependencias para aprovechar el cache
-COPY package.json pnpm-lock.yaml ./
-
-# Usa corepack para gestionar pnpm de forma confiable
-RUN corepack enable \
-  && corepack prepare pnpm@10.13.1 --activate \
-  && pnpm approve-builds \
-  && pnpm install --no-frozen-lockfile
-
-# Copia el resto del código y construye
-COPY . .
 RUN pnpm run build \
   && pnpm prune --prod
 
