@@ -1,20 +1,40 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Button } from "@/components/ui/button"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Textarea } from "@/components/ui/textarea"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { Badge } from "@/components/ui/badge"
-import { Search, User, UserPlus, Users } from "lucide-react"
-import type { SaleData, Customer } from "../sales-wizard"
+import { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  Search,
+  User,
+  UserPlus,
+  Users,
+  Loader2,
+  AlertCircle,
+} from "lucide-react";
+import { getCustomers, createCustomerSearch, createCustomer } from "@/lib/api";
+import type {
+  ApiCustomer,
+  CustomerFilters,
+  CreateCustomerRequest,
+} from "@/lib/types";
+import type { SaleData, Customer } from "../sales-wizard";
 
 interface CustomerSelectionProps {
-  saleData: SaleData
-  setSaleData: (data: SaleData) => void
+  saleData: SaleData;
+  setSaleData: (data: SaleData) => void;
 }
 
 // Mock customer data
@@ -43,16 +63,27 @@ const mockCustomers = [
     nit: "1122-334455-667-8",
     type: "existing" as const,
   },
-]
+];
 
-const departamentos = ["San Salvador", "La Libertad", "Santa Ana", "Sonsonate", "Ahuachapán"]
+const departamentos = [
+  "San Salvador",
+  "La Libertad",
+  "Santa Ana",
+  "Sonsonate",
+  "Ahuachapán",
+];
 const municipios = {
   "San Salvador": ["San Salvador", "Mejicanos", "Soyapango", "Delgado"],
-  "La Libertad": ["Santa Tecla", "Antiguo Cuscatlán", "Nuevo Cuscatlán", "La Libertad"],
+  "La Libertad": [
+    "Santa Tecla",
+    "Antiguo Cuscatlán",
+    "Nuevo Cuscatlán",
+    "La Libertad",
+  ],
   "Santa Ana": ["Santa Ana", "Metapán", "Chalchuapa", "Coatepeque"],
   Sonsonate: ["Sonsonate", "Acajutla", "Izalco", "Nahuizalco"],
   Ahuachapán: ["Ahuachapán", "Atiquizaya", "Tacuba", "Guaymango"],
-}
+};
 
 const giros = [
   "Comercio al por menor",
@@ -63,17 +94,28 @@ const giros = [
   "Agricultura",
   "Tecnología",
   "Educación",
-]
+];
 
-export function CustomerSelection({ saleData, setSaleData }: CustomerSelectionProps) {
-  const [customerType, setCustomerType] = useState<"search" | "factura" | "credito-fiscal" | "default">("search")
+export function CustomerSelection({
+  saleData,
+  setSaleData,
+}: CustomerSelectionProps) {
+  const [customerType, setCustomerType] = useState<
+    "search" | "factura" | "credito-fiscal" | "default"
+  >("search");
   const [searchForm, setSearchForm] = useState({
     nombre: "",
     dui: "",
     nit: "",
     email: "",
-  })
-  const [searchResults, setSearchResults] = useState(mockCustomers)
+  });
+
+  // Estados para la API de clientes
+  const [customers, setCustomers] = useState<ApiCustomer[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [searchPerformed, setSearchPerformed] = useState(false);
+
   const [newCustomerForm, setNewCustomerForm] = useState({
     nombre: "",
     email: "",
@@ -85,44 +127,93 @@ export function CustomerSelection({ saleData, setSaleData }: CustomerSelectionPr
     municipio: "",
     distrito: "",
     direccion: "",
-  })
+  });
 
-  const handleSearch = () => {
-    let filtered = mockCustomers
-
-    if (searchForm.nombre) {
-      filtered = filtered.filter((c) => c.name.toLowerCase().includes(searchForm.nombre.toLowerCase()))
-    }
-    if (searchForm.dui) {
-      filtered = filtered.filter((c) => c.dui?.includes(searchForm.dui))
-    }
-    if (searchForm.nit) {
-      filtered = filtered.filter((c) => c.nit?.includes(searchForm.nit))
-    }
-    if (searchForm.email) {
-      filtered = filtered.filter((c) => c.email?.toLowerCase().includes(searchForm.email.toLowerCase()))
+  // Función para buscar clientes usando la API
+  const handleSearch = async () => {
+    if (
+      !searchForm.nombre &&
+      !searchForm.dui &&
+      !searchForm.nit &&
+      !searchForm.email
+    ) {
+      setError("Por favor ingrese al menos un criterio de búsqueda");
+      return;
     }
 
-    setSearchResults(filtered)
-  }
+    setLoading(true);
+    setError(null);
+    setSearchPerformed(true);
 
-  const selectExistingCustomer = (customer: any) => {
+    try {
+      const filters: CustomerFilters = {};
+
+      if (searchForm.nombre) filters.nombre = searchForm.nombre;
+      if (searchForm.dui) filters.dui = searchForm.dui;
+      if (searchForm.nit) filters.nit = searchForm.nit;
+      if (searchForm.email) filters.email = searchForm.email;
+
+      const response = await getCustomers(filters);
+      setCustomers(response.data);
+    } catch (err) {
+      console.error("Error al buscar clientes:", err);
+      setError("Error al buscar clientes. Por favor intente nuevamente.");
+      setCustomers([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Función para convertir ApiCustomer a Customer
+  const apiCustomerToCustomer = (apiCustomer: ApiCustomer): Customer => {
+    return {
+      id: apiCustomer.id,
+      name: apiCustomer.nombre,
+      email: apiCustomer.email || undefined,
+      dui: apiCustomer.dui || undefined,
+      nit: apiCustomer.nit || undefined,
+      registroFiscal: apiCustomer.registroFiscal || undefined,
+      giro: apiCustomer.giro || undefined,
+      telefono: apiCustomer.telefono || undefined,
+      departamento: apiCustomer.departamento || undefined,
+      municipio: apiCustomer.municipio || undefined,
+      distrito: apiCustomer.distrito || undefined,
+      direccion: apiCustomer.direccion || undefined,
+      type: "existing",
+    };
+  };
+
+  const selectExistingCustomer = (apiCustomer: ApiCustomer) => {
+    const customer = apiCustomerToCustomer(apiCustomer);
     setSaleData({
       ...saleData,
-      customer: { ...customer, type: "existing" },
-    })
-  }
+      customer,
+    });
+  };
 
-  const createNewCustomer = () => {
+  const createNewCustomer = async () => {
     if (customerType === "factura") {
-      if (!newCustomerForm.nombre || !newCustomerForm.email) return
+      if (!newCustomerForm.nombre || !newCustomerForm.email) return;
 
-      const customer: Customer = {
-        name: newCustomerForm.nombre,
-        email: newCustomerForm.email,
-        type: "factura",
+      setLoading(true);
+      setError(null);
+
+      try {
+        const customerData: CreateCustomerRequest = {
+          nombre: newCustomerForm.nombre,
+          email: newCustomerForm.email,
+          tipo: "Natural",
+        };
+
+        const response = await createCustomer(customerData);
+        const customer = apiCustomerToCustomer(response.data);
+        setSaleData({ ...saleData, customer });
+      } catch (err) {
+        console.error("Error al crear cliente:", err);
+        setError("Error al crear el cliente. Por favor intente nuevamente.");
+      } finally {
+        setLoading(false);
       }
-      setSaleData({ ...saleData, customer })
     } else if (customerType === "credito-fiscal") {
       if (
         !newCustomerForm.nombre ||
@@ -135,35 +226,51 @@ export function CustomerSelection({ saleData, setSaleData }: CustomerSelectionPr
         !newCustomerForm.distrito ||
         !newCustomerForm.direccion
       ) {
-        return
+        return;
       }
 
-      const customer: Customer = {
-        name: newCustomerForm.nombre,
-        registroFiscal: newCustomerForm.registroFiscal,
-        nit: newCustomerForm.nit,
-        giro: newCustomerForm.giro,
-        telefono: newCustomerForm.telefono,
-        departamento: newCustomerForm.departamento,
-        municipio: newCustomerForm.municipio,
-        distrito: newCustomerForm.distrito,
-        direccion: newCustomerForm.direccion,
-        type: "credito-fiscal",
+      setLoading(true);
+      setError(null);
+
+      try {
+        const customerData: CreateCustomerRequest = {
+          nombre: newCustomerForm.nombre,
+          registroFiscal: newCustomerForm.registroFiscal,
+          nit: newCustomerForm.nit,
+          giro: newCustomerForm.giro,
+          telefono: newCustomerForm.telefono,
+          departamento: newCustomerForm.departamento,
+          municipio: newCustomerForm.municipio,
+          distrito: newCustomerForm.distrito,
+          direccion: newCustomerForm.direccion,
+          tipo: "Natural",
+        };
+
+        const response = await createCustomer(customerData);
+        const customer = apiCustomerToCustomer(response.data);
+        setSaleData({ ...saleData, customer });
+      } catch (err) {
+        console.error("Error al crear cliente:", err);
+        setError("Error al crear el cliente. Por favor intente nuevamente.");
+      } finally {
+        setLoading(false);
       }
-      setSaleData({ ...saleData, customer })
     }
-  }
+  };
 
   const selectDefaultCustomer = () => {
     const customer: Customer = {
       name: "Consumidor final",
       type: "default",
-    }
-    setSaleData({ ...saleData, customer })
-  }
+    };
+    setSaleData({ ...saleData, customer });
+  };
 
   const clearCustomer = () => {
-    setSaleData({ ...saleData, customer: null })
+    setSaleData({ ...saleData, customer: null });
+    setCustomers([]);
+    setError(null);
+    setSearchPerformed(false);
     setNewCustomerForm({
       nombre: "",
       email: "",
@@ -175,8 +282,8 @@ export function CustomerSelection({ saleData, setSaleData }: CustomerSelectionPr
       municipio: "",
       distrito: "",
       direccion: "",
-    })
-  }
+    });
+  };
 
   return (
     <div className="space-y-6">
@@ -199,9 +306,21 @@ export function CustomerSelection({ saleData, setSaleData }: CustomerSelectionPr
                 <Badge variant="secondary">{saleData.customer.type}</Badge>
                 <span className="font-semibold">{saleData.customer.name}</span>
               </div>
-              {saleData.customer.email && <p className="text-sm text-muted-foreground">{saleData.customer.email}</p>}
-              {saleData.customer.nit && <p className="text-sm text-muted-foreground">NIT: {saleData.customer.nit}</p>}
-              {saleData.customer.dui && <p className="text-sm text-muted-foreground">DUI: {saleData.customer.dui}</p>}
+              {saleData.customer.email && (
+                <p className="text-sm text-muted-foreground">
+                  {saleData.customer.email}
+                </p>
+              )}
+              {saleData.customer.nit && (
+                <p className="text-sm text-muted-foreground">
+                  NIT: {saleData.customer.nit}
+                </p>
+              )}
+              {saleData.customer.dui && (
+                <p className="text-sm text-muted-foreground">
+                  DUI: {saleData.customer.dui}
+                </p>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -209,31 +328,38 @@ export function CustomerSelection({ saleData, setSaleData }: CustomerSelectionPr
 
       {!saleData.customer && (
         <>
-          <Card>
-            <CardHeader>
-              <CardTitle>Seleccionar tipo de cliente</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <RadioGroup value={customerType} onValueChange={(value: any) => setCustomerType(value)}>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="search" id="search" />
-                  <Label htmlFor="search">Buscar cliente existente</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="factura" id="factura" />
-                  <Label htmlFor="factura">Nuevo cliente - Factura</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="credito-fiscal" id="credito-fiscal" />
-                  <Label htmlFor="credito-fiscal">Nuevo cliente - Crédito Fiscal</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="default" id="default" />
-                  <Label htmlFor="default">Consumidor final</Label>
-                </div>
-              </RadioGroup>
-            </CardContent>
-          </Card>
+           <Card>
+             <CardHeader>
+               <CardTitle>Seleccionar tipo de cliente</CardTitle>
+             </CardHeader>
+             <CardContent>
+               {error && (
+                 <Alert className="mb-4">
+                   <AlertCircle className="h-4 w-4" />
+                   <AlertDescription>{error}</AlertDescription>
+                 </Alert>
+               )}
+               
+               <RadioGroup value={customerType} onValueChange={(value: any) => setCustomerType(value)}>
+                 <div className="flex items-center space-x-2">
+                   <RadioGroupItem value="search" id="search" />
+                   <Label htmlFor="search">Buscar cliente existente</Label>
+                 </div>
+                 <div className="flex items-center space-x-2">
+                   <RadioGroupItem value="factura" id="factura" />
+                   <Label htmlFor="factura">Nuevo cliente - Persona Natural (Factura)</Label>
+                 </div>
+                 <div className="flex items-center space-x-2">
+                   <RadioGroupItem value="credito-fiscal" id="credito-fiscal" />
+                   <Label htmlFor="credito-fiscal">Nuevo cliente - Persona Natural (Crédito Fiscal)</Label>
+                 </div>
+                 <div className="flex items-center space-x-2">
+                   <RadioGroupItem value="default" id="default" />
+                   <Label htmlFor="default">Consumidor final</Label>
+                 </div>
+               </RadioGroup>
+             </CardContent>
+           </Card>
 
           {customerType === "search" && (
             <Card>
@@ -250,8 +376,11 @@ export function CustomerSelection({ saleData, setSaleData }: CustomerSelectionPr
                     <Input
                       id="search-nombre"
                       value={searchForm.nombre}
-                      onChange={(e) => setSearchForm({ ...searchForm, nombre: e.target.value })}
+                      onChange={(e) =>
+                        setSearchForm({ ...searchForm, nombre: e.target.value })
+                      }
                       placeholder="Buscar por nombre..."
+                      disabled={loading}
                     />
                   </div>
                   <div>
@@ -259,8 +388,11 @@ export function CustomerSelection({ saleData, setSaleData }: CustomerSelectionPr
                     <Input
                       id="search-dui"
                       value={searchForm.dui}
-                      onChange={(e) => setSearchForm({ ...searchForm, dui: e.target.value })}
+                      onChange={(e) =>
+                        setSearchForm({ ...searchForm, dui: e.target.value })
+                      }
                       placeholder="12345678-9"
+                      disabled={loading}
                     />
                   </div>
                   <div>
@@ -268,8 +400,11 @@ export function CustomerSelection({ saleData, setSaleData }: CustomerSelectionPr
                     <Input
                       id="search-nit"
                       value={searchForm.nit}
-                      onChange={(e) => setSearchForm({ ...searchForm, nit: e.target.value })}
+                      onChange={(e) =>
+                        setSearchForm({ ...searchForm, nit: e.target.value })
+                      }
                       placeholder="1234-567890-123-4"
+                      disabled={loading}
                     />
                   </div>
                   <div>
@@ -278,32 +413,82 @@ export function CustomerSelection({ saleData, setSaleData }: CustomerSelectionPr
                       id="search-email"
                       type="email"
                       value={searchForm.email}
-                      onChange={(e) => setSearchForm({ ...searchForm, email: e.target.value })}
+                      onChange={(e) =>
+                        setSearchForm({ ...searchForm, email: e.target.value })
+                      }
                       placeholder="cliente@email.com"
+                      disabled={loading}
                     />
                   </div>
                 </div>
-                <Button onClick={handleSearch} className="bg-primary hover:bg-primary/90 mb-4">
-                  <Search className="h-4 w-4 mr-2" />
-                  Buscar
+
+                <Button
+                  onClick={handleSearch}
+                  disabled={loading}
+                  className="bg-primary hover:bg-primary/90 mb-4"
+                >
+                  {loading ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Search className="h-4 w-4 mr-2" />
+                  )}
+                  {loading ? "Buscando..." : "Buscar"}
                 </Button>
 
-                {searchResults.length > 0 && (
+                {error && (
+                  <Alert className="mb-4">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>{error}</AlertDescription>
+                  </Alert>
+                )}
+
+                {searchPerformed &&
+                  !loading &&
+                  customers.length === 0 &&
+                  !error && (
+                    <Alert className="mb-4">
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertDescription>
+                        No se encontraron clientes con los criterios de búsqueda
+                        especificados.
+                      </AlertDescription>
+                    </Alert>
+                  )}
+
+                {customers.length > 0 && (
                   <div className="space-y-3">
-                    <h3 className="text-lg font-semibold">Resultados de búsqueda</h3>
-                    {searchResults.map((customer) => (
-                      <div key={customer.id} className="flex items-center justify-between p-4 border rounded-lg">
+                    <h3 className="text-lg font-semibold">
+                      Resultados de búsqueda
+                    </h3>
+                    {customers.map((customer) => (
+                      <div
+                        key={customer.id}
+                        className="flex items-center justify-between p-4 border rounded-lg"
+                      >
                         <div>
-                          <h4 className="font-medium">{customer.name}</h4>
-                          <p className="text-sm text-muted-foreground">{customer.email}</p>
+                          <h4 className="font-medium">{customer.nombre}</h4>
+                          {customer.email && (
+                            <p className="text-sm text-muted-foreground">
+                              {customer.email}
+                            </p>
+                          )}
                           <div className="flex gap-2 mt-1">
-                            {customer.dui && <Badge variant="outline">DUI: {customer.dui}</Badge>}
-                            {customer.nit && <Badge variant="outline">NIT: {customer.nit}</Badge>}
+                            {customer.dui && (
+                              <Badge variant="outline">
+                                DUI: {customer.dui}
+                              </Badge>
+                            )}
+                            {customer.nit && (
+                              <Badge variant="outline">
+                                NIT: {customer.nit}
+                              </Badge>
+                            )}
                           </div>
                         </div>
                         <Button
                           onClick={() => selectExistingCustomer(customer)}
                           className="bg-secondary hover:bg-secondary/90"
+                          disabled={loading}
                         >
                           Seleccionar
                         </Button>
@@ -320,7 +505,7 @@ export function CustomerSelection({ saleData, setSaleData }: CustomerSelectionPr
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <UserPlus className="h-5 w-5" />
-                  Nuevo cliente - Factura
+                  Nuevo cliente - Persona Natural (Factura)
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -332,20 +517,31 @@ export function CustomerSelection({ saleData, setSaleData }: CustomerSelectionPr
                     <Input
                       id="factura-nombre"
                       value={newCustomerForm.nombre}
-                      onChange={(e) => setNewCustomerForm({ ...newCustomerForm, nombre: e.target.value })}
+                      onChange={(e) =>
+                        setNewCustomerForm({
+                          ...newCustomerForm,
+                          nombre: e.target.value,
+                        })
+                      }
                       placeholder="Nombre completo"
                       required
                     />
                   </div>
                   <div>
                     <Label htmlFor="factura-email">
-                      Correo electrónico <span className="text-destructive">*</span>
+                      Correo electrónico{" "}
+                      <span className="text-destructive">*</span>
                     </Label>
                     <Input
                       id="factura-email"
                       type="email"
                       value={newCustomerForm.email}
-                      onChange={(e) => setNewCustomerForm({ ...newCustomerForm, email: e.target.value })}
+                      onChange={(e) =>
+                        setNewCustomerForm({
+                          ...newCustomerForm,
+                          email: e.target.value,
+                        })
+                      }
                       placeholder="cliente@email.com"
                       required
                     />
@@ -353,11 +549,15 @@ export function CustomerSelection({ saleData, setSaleData }: CustomerSelectionPr
                 </div>
                 <Button
                   onClick={createNewCustomer}
-                  disabled={!newCustomerForm.nombre || !newCustomerForm.email}
+                  disabled={!newCustomerForm.nombre || !newCustomerForm.email || loading}
                   className="bg-secondary hover:bg-secondary/90"
                 >
-                  <UserPlus className="h-4 w-4 mr-2" />
-                  Crear cliente
+                  {loading ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <UserPlus className="h-4 w-4 mr-2" />
+                  )}
+                  {loading ? "Creando..." : "Crear cliente"}
                 </Button>
               </CardContent>
             </Card>
@@ -368,7 +568,7 @@ export function CustomerSelection({ saleData, setSaleData }: CustomerSelectionPr
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <UserPlus className="h-5 w-5" />
-                  Nuevo cliente - Crédito Fiscal
+                  Nuevo cliente - Persona Natural (Crédito Fiscal)
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -380,19 +580,30 @@ export function CustomerSelection({ saleData, setSaleData }: CustomerSelectionPr
                     <Input
                       id="cf-nombre"
                       value={newCustomerForm.nombre}
-                      onChange={(e) => setNewCustomerForm({ ...newCustomerForm, nombre: e.target.value })}
+                      onChange={(e) =>
+                        setNewCustomerForm({
+                          ...newCustomerForm,
+                          nombre: e.target.value,
+                        })
+                      }
                       placeholder="Nombre o razón social"
                       required
                     />
                   </div>
                   <div>
                     <Label htmlFor="cf-registro">
-                      Registro Fiscal <span className="text-destructive">*</span>
+                      Registro Fiscal{" "}
+                      <span className="text-destructive">*</span>
                     </Label>
                     <Input
                       id="cf-registro"
                       value={newCustomerForm.registroFiscal}
-                      onChange={(e) => setNewCustomerForm({ ...newCustomerForm, registroFiscal: e.target.value })}
+                      onChange={(e) =>
+                        setNewCustomerForm({
+                          ...newCustomerForm,
+                          registroFiscal: e.target.value,
+                        })
+                      }
                       placeholder="Número de registro fiscal"
                       required
                     />
@@ -404,18 +615,26 @@ export function CustomerSelection({ saleData, setSaleData }: CustomerSelectionPr
                     <Input
                       id="cf-nit"
                       value={newCustomerForm.nit}
-                      onChange={(e) => setNewCustomerForm({ ...newCustomerForm, nit: e.target.value })}
+                      onChange={(e) =>
+                        setNewCustomerForm({
+                          ...newCustomerForm,
+                          nit: e.target.value,
+                        })
+                      }
                       placeholder="1234-567890-123-4"
                       required
                     />
                   </div>
                   <div>
                     <Label htmlFor="cf-giro">
-                      Giro / Actividad Económica <span className="text-destructive">*</span>
+                      Giro / Actividad Económica{" "}
+                      <span className="text-destructive">*</span>
                     </Label>
                     <Select
                       value={newCustomerForm.giro}
-                      onValueChange={(value) => setNewCustomerForm({ ...newCustomerForm, giro: value })}
+                      onValueChange={(value) =>
+                        setNewCustomerForm({ ...newCustomerForm, giro: value })
+                      }
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Seleccionar giro" />
@@ -436,7 +655,12 @@ export function CustomerSelection({ saleData, setSaleData }: CustomerSelectionPr
                     <Input
                       id="cf-telefono"
                       value={newCustomerForm.telefono}
-                      onChange={(e) => setNewCustomerForm({ ...newCustomerForm, telefono: e.target.value })}
+                      onChange={(e) =>
+                        setNewCustomerForm({
+                          ...newCustomerForm,
+                          telefono: e.target.value,
+                        })
+                      }
                       placeholder="2234-5678"
                       required
                     />
@@ -448,7 +672,11 @@ export function CustomerSelection({ saleData, setSaleData }: CustomerSelectionPr
                     <Select
                       value={newCustomerForm.departamento}
                       onValueChange={(value) => {
-                        setNewCustomerForm({ ...newCustomerForm, departamento: value, municipio: "" })
+                        setNewCustomerForm({
+                          ...newCustomerForm,
+                          departamento: value,
+                          municipio: "",
+                        });
                       }}
                     >
                       <SelectTrigger>
@@ -469,7 +697,12 @@ export function CustomerSelection({ saleData, setSaleData }: CustomerSelectionPr
                     </Label>
                     <Select
                       value={newCustomerForm.municipio}
-                      onValueChange={(value) => setNewCustomerForm({ ...newCustomerForm, municipio: value })}
+                      onValueChange={(value) =>
+                        setNewCustomerForm({
+                          ...newCustomerForm,
+                          municipio: value,
+                        })
+                      }
                       disabled={!newCustomerForm.departamento}
                     >
                       <SelectTrigger>
@@ -477,7 +710,9 @@ export function CustomerSelection({ saleData, setSaleData }: CustomerSelectionPr
                       </SelectTrigger>
                       <SelectContent>
                         {newCustomerForm.departamento &&
-                          municipios[newCustomerForm.departamento as keyof typeof municipios]?.map((mun) => (
+                          municipios[
+                            newCustomerForm.departamento as keyof typeof municipios
+                          ]?.map((mun) => (
                             <SelectItem key={mun} value={mun}>
                               {mun}
                             </SelectItem>
@@ -492,7 +727,12 @@ export function CustomerSelection({ saleData, setSaleData }: CustomerSelectionPr
                     <Input
                       id="cf-distrito"
                       value={newCustomerForm.distrito}
-                      onChange={(e) => setNewCustomerForm({ ...newCustomerForm, distrito: e.target.value })}
+                      onChange={(e) =>
+                        setNewCustomerForm({
+                          ...newCustomerForm,
+                          distrito: e.target.value,
+                        })
+                      }
                       placeholder="Nombre del distrito"
                       required
                     />
@@ -505,7 +745,12 @@ export function CustomerSelection({ saleData, setSaleData }: CustomerSelectionPr
                   <Textarea
                     id="cf-direccion"
                     value={newCustomerForm.direccion}
-                    onChange={(e) => setNewCustomerForm({ ...newCustomerForm, direccion: e.target.value })}
+                    onChange={(e) =>
+                      setNewCustomerForm({
+                        ...newCustomerForm,
+                        direccion: e.target.value,
+                      })
+                    }
                     placeholder="Dirección completa"
                     required
                   />
@@ -521,12 +766,17 @@ export function CustomerSelection({ saleData, setSaleData }: CustomerSelectionPr
                     !newCustomerForm.departamento ||
                     !newCustomerForm.municipio ||
                     !newCustomerForm.distrito ||
-                    !newCustomerForm.direccion
+                    !newCustomerForm.direccion ||
+                    loading
                   }
                   className="bg-secondary hover:bg-secondary/90"
                 >
-                  <UserPlus className="h-4 w-4 mr-2" />
-                  Crear cliente
+                  {loading ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <UserPlus className="h-4 w-4 mr-2" />
+                  )}
+                  {loading ? "Creando..." : "Crear cliente"}
                 </Button>
               </CardContent>
             </Card>
@@ -544,9 +794,14 @@ export function CustomerSelection({ saleData, setSaleData }: CustomerSelectionPr
                 <div className="flex items-center justify-between p-4 border rounded-lg">
                   <div>
                     <h4 className="font-medium">Consumidor final</h4>
-                    <p className="text-sm text-muted-foreground">Cliente genérico para ventas sin datos específicos</p>
+                    <p className="text-sm text-muted-foreground">
+                      Cliente genérico para ventas sin datos específicos
+                    </p>
                   </div>
-                  <Button onClick={selectDefaultCustomer} className="bg-secondary hover:bg-secondary/90">
+                  <Button
+                    onClick={selectDefaultCustomer}
+                    className="bg-secondary hover:bg-secondary/90"
+                  >
                     Seleccionar
                   </Button>
                 </div>
@@ -556,5 +811,5 @@ export function CustomerSelection({ saleData, setSaleData }: CustomerSelectionPr
         </>
       )}
     </div>
-  )
+  );
 }
