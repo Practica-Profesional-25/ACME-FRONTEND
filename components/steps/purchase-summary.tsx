@@ -25,7 +25,7 @@ export function PurchaseSummary({ saleData, setSaleData }: PurchaseSummaryProps)
   const totalAmount = saleData.products.reduce((sum, product) => sum + product.total, 0)
   const subtotalAmount = saleData.products.reduce((sum, product) => sum + product.subtotal, 0)
   const taxAmount = saleData.products.reduce((sum, product) => sum + product.tax, 0)
-  const change = cashAmount ? Math.max(0, Number.parseFloat(cashAmount) - totalAmount) : 0
+  const change = cashAmount ? Math.max(0, Number.parseFloat((Number.parseFloat(cashAmount) - totalAmount).toFixed(2))) : 0
 
   useEffect(() => {
     if (paymentMethod === "efectivo") {
@@ -34,7 +34,7 @@ export function PurchaseSummary({ saleData, setSaleData }: PurchaseSummaryProps)
         paymentMethod,
         paymentDetails: {
           cashAmount: Number.parseFloat(cashAmount) || 0,
-          change,
+          change: Number.parseFloat(change.toFixed(2)),
         },
       })
     } else if (paymentMethod === "tarjeta") {

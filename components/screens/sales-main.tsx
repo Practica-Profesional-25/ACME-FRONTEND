@@ -1,57 +1,74 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Plus, Search, Eye, FileText, Loader2, AlertCircle } from "lucide-react"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { getSales, getSaleById } from "@/lib/api"
-import type { ApiSale, SaleFilters } from "@/lib/types"
+import { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Plus,
+  Search,
+  Eye,
+  FileText,
+  Loader2,
+  AlertCircle,
+} from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { SaleDetailsDialog } from "@/components/ui/sale-details-dialog";
+import { getSales } from "@/lib/api";
+import type { ApiSale, SaleFilters } from "@/lib/types";
 
 interface SalesMainProps {
-  onStartSale: () => void
+  onStartSale: () => void;
 }
 
 export function SalesMain({ onStartSale }: SalesMainProps) {
-  const [sales, setSales] = useState<ApiSale[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [searchTerm, setSearchTerm] = useState("")
-  const [currentPage, setCurrentPage] = useState(1)
-  const [totalPages, setTotalPages] = useState(1)
-  const [totalSales, setTotalSales] = useState(0)
-  const itemsPerPage = 10
+  const [sales, setSales] = useState<ApiSale[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalSales, setTotalSales] = useState(0);
+  const itemsPerPage = 10;
 
   // Función para cargar las ventas desde la API
   const loadSales = async (filters: SaleFilters = {}) => {
     try {
-      setLoading(true)
-      setError(null)
-      
+      setLoading(true);
+      setError(null);
+
       const response = await getSales({
         ...filters,
         page: currentPage,
         limit: itemsPerPage,
-      })
-      
-      setSales(response.data)
-      setTotalPages(response.totalPages)
-      setTotalSales(response.total)
+      });
+
+      setSales(response.data);
+      setTotalPages(response.totalPages);
+      setTotalSales(response.total);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al cargar las ventas')
-      setSales([])
+      setError(
+        err instanceof Error ? err.message : "Error al cargar las ventas"
+      );
+      setSales([]);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   // Cargar ventas al montar el componente y cuando cambie la página
   useEffect(() => {
-    loadSales()
-  }, [currentPage])
+    loadSales();
+  }, [currentPage]);
 
   // Manejar búsqueda con debounce
   useEffect(() => {
@@ -60,52 +77,48 @@ export function SalesMain({ onStartSale }: SalesMainProps) {
         loadSales({
           numero: searchTerm,
           cliente: searchTerm,
-        })
+        });
       } else {
-        loadSales()
+        loadSales();
       }
-    }, 300)
+    }, 300);
 
-    return () => clearTimeout(timeoutId)
-  }, [searchTerm])
+    return () => clearTimeout(timeoutId);
+  }, [searchTerm]);
 
-  const filteredSales = sales
-  const paginatedSales = filteredSales
+  const filteredSales = sales;
+  const paginatedSales = filteredSales;
 
   const getStatusBadge = (estado: string) => {
     switch (estado) {
       case "Completada":
-        return <Badge className="bg-secondary text-secondary-foreground">Completada</Badge>
+        return (
+          <Badge className="bg-secondary text-secondary-foreground">
+            Completada
+          </Badge>
+        );
       case "Pendiente":
-        return <Badge variant="outline">Pendiente</Badge>
+        return <Badge variant="outline">Pendiente</Badge>;
       case "Cancelada":
-        return <Badge variant="destructive">Cancelada</Badge>
+        return <Badge variant="destructive">Cancelada</Badge>;
       default:
-        return <Badge variant="secondary">{estado}</Badge>
+        return <Badge variant="secondary">{estado}</Badge>;
     }
-  }
+  };
 
-  // Función para ver detalles de una venta
-  const handleViewSale = async (saleId: string) => {
-    try {
-      const response = await getSaleById(saleId)
-      if (response.success) {
-        // Mostrar detalles de la venta en un alert o modal
-        alert(`Detalles de la venta:\n\nNúmero: ${response.data.numero}\nCliente: ${response.data.cliente}\nTotal: $${response.data.total.toFixed(2)}\nFecha: ${response.data.fecha}\nEstado: ${response.data.estado}`)
-      }
-    } catch (error) {
-      console.error('Error al obtener detalles de la venta:', error)
-      alert('Error al cargar los detalles de la venta')
-    }
-  }
+  // Función para ver detalles de una venta - ahora usa el dialog
+  const handleViewSale = (saleId: string) => {
+    // La funcionalidad ahora está manejada por el SaleDetailsDialog component
+    // No necesitamos hacer nada aquí ya que el dialog maneja la carga de datos
+  };
 
   // Función para generar/descargar DTE
   const handleDTE = (sale: ApiSale) => {
     // Generar URL del QR para el DTE
-    const qrData = `https://admin.factura.gob.sv/consultaPublica?ambiente=00&codGeneracion=DTE-${sale.id}&fechaEmi=${sale.fecha}`
-    
+    const qrData = `https://admin.factura.gob.sv/consultaPublica?ambiente=00&codGeneracion=DTE-${sale.id}&fechaEmi=${sale.fecha}`;
+
     // Abrir en nueva ventana o descargar
-    const newWindow = window.open('', '_blank')
+    const newWindow = window.open("", "_blank");
     if (newWindow) {
       newWindow.document.write(`
         <html>
@@ -132,18 +145,22 @@ export function SalesMain({ onStartSale }: SalesMainProps) {
             </div>
             <div class="qr-container">
               <p>Código QR para verificación:</p>
-              <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrData)}" alt="QR Code DTE" />
+              <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(
+                qrData
+              )}" alt="QR Code DTE" />
               <p style="font-size: 12px; color: #666; word-break: break-all;">${qrData}</p>
             </div>
             <button onclick="window.print()" style="padding: 10px 20px; margin: 20px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">Imprimir</button>
           </body>
         </html>
-      `)
-      newWindow.document.close()
+      `);
+      newWindow.document.close();
     } else {
-      alert('No se pudo abrir la ventana del DTE. Por favor, permite las ventanas emergentes.')
+      alert(
+        "No se pudo abrir la ventana del DTE. Por favor, permite las ventanas emergentes."
+      );
     }
-  }
+  };
 
   return (
     <div className="space-y-6">
@@ -152,7 +169,10 @@ export function SalesMain({ onStartSale }: SalesMainProps) {
           <h1 className="text-3xl font-bold text-primary">Ventas</h1>
           <p className="text-muted-foreground">Gestión de ventas realizadas</p>
         </div>
-        <Button onClick={onStartSale} className="bg-primary hover:bg-primary/90">
+        <Button
+          onClick={onStartSale}
+          className="bg-primary hover:bg-primary/90"
+        >
           <Plus className="h-4 w-4 mr-2" />
           Nueva venta
         </Button>
@@ -180,7 +200,7 @@ export function SalesMain({ onStartSale }: SalesMainProps) {
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
-          
+
           {loading ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-8 w-8 animate-spin" />
@@ -202,30 +222,43 @@ export function SalesMain({ onStartSale }: SalesMainProps) {
                 <TableBody>
                   {paginatedSales.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                      <TableCell
+                        colSpan={6}
+                        className="text-center py-8 text-muted-foreground"
+                      >
                         No se encontraron ventas
                       </TableCell>
                     </TableRow>
                   ) : (
                     paginatedSales.map((sale) => (
                       <TableRow key={sale.id}>
-                        <TableCell className="font-medium">{sale.numero}</TableCell>
+                        <TableCell className="font-medium">
+                          {sale.numero}
+                        </TableCell>
                         <TableCell>{sale.cliente}</TableCell>
-                        <TableCell className="font-semibold">${sale.total.toFixed(2)}</TableCell>
+                        <TableCell className="font-semibold">
+                          ${sale.total.toFixed(2)}
+                        </TableCell>
                         <TableCell>{sale.fecha}</TableCell>
-                        <TableCell>{getStatusBadge(sale.estado)}</TableCell>
+                        <TableCell>{getStatusBadge(sale.estado || 'pendiente')}</TableCell>
                         <TableCell>
-                           <div className="flex items-center gap-2">
-                             <Button variant="outline" size="sm" onClick={() => handleViewSale(sale.id)}>
-                               <Eye className="h-4 w-4 mr-1" />
-                               Ver
-                             </Button>
-                             <Button variant="outline" size="sm" onClick={() => handleDTE(sale)}>
-                               <FileText className="h-4 w-4 mr-1" />
-                               DTE
-                             </Button>
-                           </div>
-                         </TableCell>
+                          <div className="flex items-center gap-2">
+                            <SaleDetailsDialog saleId={sale.id}>
+                              <Button variant="outline" size="sm">
+                                <Eye className="h-4 w-4 mr-1" />
+                                Ver
+                              </Button>
+                            </SaleDetailsDialog>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleDTE(sale)}
+                            >
+                              <FileText className="h-4 w-4 mr-1" />
+                              DTE
+                            </Button>
+                          </div>
+                        </TableCell>
                       </TableRow>
                     ))
                   )}
@@ -236,14 +269,17 @@ export function SalesMain({ onStartSale }: SalesMainProps) {
               {totalPages > 1 && (
                 <div className="flex items-center justify-between mt-4">
                   <p className="text-sm text-muted-foreground">
-                    Mostrando {((currentPage - 1) * itemsPerPage) + 1} a {Math.min(currentPage * itemsPerPage, totalSales)} de{" "}
+                    Mostrando {(currentPage - 1) * itemsPerPage + 1} a{" "}
+                    {Math.min(currentPage * itemsPerPage, totalSales)} de{" "}
                     {totalSales} ventas
                   </p>
                   <div className="flex items-center gap-2">
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                      onClick={() =>
+                        setCurrentPage((prev) => Math.max(1, prev - 1))
+                      }
                       disabled={currentPage === 1 || loading}
                     >
                       Anterior
@@ -254,7 +290,9 @@ export function SalesMain({ onStartSale }: SalesMainProps) {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                      onClick={() =>
+                        setCurrentPage((prev) => Math.min(totalPages, prev + 1))
+                      }
                       disabled={currentPage === totalPages || loading}
                     >
                       Siguiente
@@ -267,5 +305,5 @@ export function SalesMain({ onStartSale }: SalesMainProps) {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }

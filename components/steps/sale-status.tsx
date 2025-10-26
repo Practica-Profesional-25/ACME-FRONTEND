@@ -125,7 +125,9 @@ export function SaleStatus({ saleData, setSaleData }: SaleStatusProps) {
         total,
         paymentMethod: saleData.paymentMethod || "efectivo",
         paymentDetails: {
-          change: saleData.paymentMethod === "efectivo" ? 0 : undefined,
+          cashAmount: saleData.paymentMethod === "efectivo" ? saleData.paymentDetails?.cashAmount : undefined,
+          change: saleData.paymentMethod === "efectivo" ? saleData.paymentDetails?.change : undefined,
+          posStatus: saleData.paymentDetails?.posStatus,
           cardType: saleData.paymentMethod === "tarjeta" ? "credit" : undefined,
           transactionId:
             saleData.paymentMethod === "tarjeta"
