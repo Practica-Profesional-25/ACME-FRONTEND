@@ -7,6 +7,7 @@ import { Suspense } from "react"
 import "./globals.css"
 import { UserProvider } from "@/contexts/UserContext"
 import { auth0 } from "@/lib/auth0"
+import { AccessTokenProvider } from "@/contexts/AccessTokenContext"
 
 export const metadata: Metadata = {
   title: "Adventure Works - Proceso de Venta",
@@ -22,12 +23,17 @@ export default async function RootLayout({
 
   const session     = await auth0.getSession();
   const sessionUser = session?.user ?? null
+  const accessToken = await auth0.getAccessToken({ audience: process.env.AUTH0_AUDIENCE });
+  const token       = accessToken.token
+
   return (
     <html lang="es">
       <body className={`font-sans ${GeistSans.variable} ${GeistMono.variable}`}>
         <UserProvider value={sessionUser}>
-          <Suspense fallback={null}>{children}</Suspense>
-          <Analytics />
+          <AccessTokenProvider value={token}>
+            <Suspense fallback={null}>{children}</Suspense>
+            <Analytics />
+          </AccessTokenProvider>
         </UserProvider>
       </body>
     </html>

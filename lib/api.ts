@@ -24,7 +24,8 @@ const API_BASE_URL =
 
 // Función para obtener productos con filtros opcionales
 export async function getProducts(
-  filters: ProductFilters = {}
+  filters: ProductFilters = {},
+  token: string
 ): Promise<ProductsApiResponse> {
   try {
     const searchParams = new URLSearchParams();
@@ -47,6 +48,7 @@ export async function getProducts(
       method: "GET",
       headers: {
         "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`
       },
     });
 
