@@ -1,88 +1,166 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Plus, Search, Eye, FileText } from "lucide-react"
+import { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Plus,
+  Search,
+  Eye,
+  FileText,
+  Loader2,
+  AlertCircle,
+} from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { SaleDetailsDialog } from "@/components/ui/sale-details-dialog";
+import { getSales } from "@/lib/api";
+import type { ApiSale, SaleFilters } from "@/lib/types";
 
 interface SalesMainProps {
-  onStartSale: () => void
+  onStartSale: () => void;
 }
 
-// Mock sales data
-const mockSales = [
-  {
-    id: "V001",
-    numero: "2024-001",
-    cliente: "María González",
-    total: 1299.98,
-    fecha: "2024-01-15",
-    estado: "Completada",
-  },
-  {
-    id: "V002",
-    numero: "2024-002",
-    cliente: "Carlos Rodríguez",
-    total: 549.99,
-    fecha: "2024-01-15",
-    estado: "Completada",
-  },
-  {
-    id: "V003",
-    numero: "2024-003",
-    cliente: "Ana Martínez",
-    total: 899.5,
-    fecha: "2024-01-14",
-    estado: "Completada",
-  },
-  {
-    id: "V004",
-    numero: "2024-004",
-    cliente: "Consumidor final",
-    total: 199.99,
-    fecha: "2024-01-14",
-    estado: "Completada",
-  },
-  {
-    id: "V005",
-    numero: "2024-005",
-    cliente: "Luis Hernández",
-    total: 1599.0,
-    fecha: "2024-01-13",
-    estado: "Completada",
-  },
-]
-
 export function SalesMain({ onStartSale }: SalesMainProps) {
-  const [searchTerm, setSearchTerm] = useState("")
-  const [currentPage, setCurrentPage] = useState(1)
-  const itemsPerPage = 10
+  const [sales, setSales] = useState<ApiSale[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalSales, setTotalSales] = useState(0);
+  const itemsPerPage = 10;
 
-  const filteredSales = mockSales.filter(
-    (sale) =>
-      sale.numero.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      sale.cliente.toLowerCase().includes(searchTerm.toLowerCase()),
-  )
+  // Función para cargar las ventas desde la API
+  const loadSales = async (filters: SaleFilters = {}) => {
+    try {
+      setLoading(true);
+      setError(null);
 
-  const totalPages = Math.ceil(filteredSales.length / itemsPerPage)
-  const startIndex = (currentPage - 1) * itemsPerPage
-  const paginatedSales = filteredSales.slice(startIndex, startIndex + itemsPerPage)
+      const response = await getSales({
+        ...filters,
+        page: currentPage,
+        limit: itemsPerPage,
+      });
+
+      setSales(response.data);
+      setTotalPages(response.totalPages);
+      setTotalSales(response.total);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Error al cargar las ventas"
+      );
+      setSales([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Cargar ventas al montar el componente y cuando cambie la página
+  useEffect(() => {
+    loadSales();
+  }, [currentPage]);
+
+  // Manejar búsqueda con debounce
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (searchTerm.trim()) {
+        loadSales({
+          numero: searchTerm,
+          cliente: searchTerm,
+        });
+      } else {
+        loadSales();
+      }
+    }, 300);
+
+    return () => clearTimeout(timeoutId);
+  }, [searchTerm]);
+
+  const filteredSales = sales;
+  const paginatedSales = filteredSales;
 
   const getStatusBadge = (estado: string) => {
     switch (estado) {
       case "Completada":
-        return <Badge className="bg-secondary text-secondary-foreground">Completada</Badge>
+        return (
+          <Badge className="bg-secondary text-secondary-foreground">
+            Completada
+          </Badge>
+        );
       case "Pendiente":
-        return <Badge variant="outline">Pendiente</Badge>
+        return <Badge variant="outline">Pendiente</Badge>;
       case "Cancelada":
-        return <Badge variant="destructive">Cancelada</Badge>
+        return <Badge variant="destructive">Cancelada</Badge>;
       default:
-        return <Badge variant="secondary">{estado}</Badge>
+        return <Badge variant="secondary">{estado}</Badge>;
     }
-  }
+  };
+
+  // Función para ver detalles de una venta - ahora usa el dialog
+  const handleViewSale = (saleId: string) => {
+    // La funcionalidad ahora está manejada por el SaleDetailsDialog component
+    // No necesitamos hacer nada aquí ya que el dialog maneja la carga de datos
+  };
+
+  // Función para generar/descargar DTE
+  const handleDTE = (sale: ApiSale) => {
+    // Generar URL del QR para el DTE
+    const qrData = `https://admin.factura.gob.sv/consultaPublica?ambiente=00&codGeneracion=DTE-${sale.id}&fechaEmi=${sale.fecha}`;
+
+    // Abrir en nueva ventana o descargar
+    const newWindow = window.open("", "_blank");
+    if (newWindow) {
+      newWindow.document.write(`
+        <html>
+          <head>
+            <title>DTE - ${sale.numero}</title>
+            <style>
+              body { font-family: Arial, sans-serif; padding: 20px; text-align: center; }
+              .header { margin-bottom: 30px; }
+              .qr-container { margin: 20px 0; }
+              .details { text-align: left; max-width: 400px; margin: 0 auto; }
+              .details div { margin: 10px 0; }
+            </style>
+          </head>
+          <body>
+            <div class="header">
+              <h1>Documento Tributario Electrónico</h1>
+              <h2>Venta ${sale.numero}</h2>
+            </div>
+            <div class="details">
+              <div><strong>Cliente:</strong> ${sale.cliente}</div>
+              <div><strong>Total:</strong> $${sale.total.toFixed(2)}</div>
+              <div><strong>Fecha:</strong> ${sale.fecha}</div>
+              <div><strong>Estado:</strong> ${sale.estado}</div>
+            </div>
+            <div class="qr-container">
+              <p>Código QR para verificación:</p>
+              <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(
+                qrData
+              )}" alt="QR Code DTE" />
+              <p style="font-size: 12px; color: #666; word-break: break-all;">${qrData}</p>
+            </div>
+            <button onclick="window.print()" style="padding: 10px 20px; margin: 20px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">Imprimir</button>
+          </body>
+        </html>
+      `);
+      newWindow.document.close();
+    } else {
+      alert(
+        "No se pudo abrir la ventana del DTE. Por favor, permite las ventanas emergentes."
+      );
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -91,7 +169,10 @@ export function SalesMain({ onStartSale }: SalesMainProps) {
           <h1 className="text-3xl font-bold text-primary">Ventas</h1>
           <p className="text-muted-foreground">Gestión de ventas realizadas</p>
         </div>
-        <Button onClick={onStartSale} className="bg-primary hover:bg-primary/90">
+        <Button
+          onClick={onStartSale}
+          className="bg-primary hover:bg-primary/90"
+        >
           <Plus className="h-4 w-4 mr-2" />
           Nueva venta
         </Button>
@@ -113,74 +194,116 @@ export function SalesMain({ onStartSale }: SalesMainProps) {
           </div>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Número de venta</TableHead>
-                <TableHead>Cliente</TableHead>
-                <TableHead>Total</TableHead>
-                <TableHead>Fecha</TableHead>
-                <TableHead>Estado</TableHead>
-                <TableHead>Acciones</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {paginatedSales.map((sale) => (
-                <TableRow key={sale.id}>
-                  <TableCell className="font-medium">{sale.numero}</TableCell>
-                  <TableCell>{sale.cliente}</TableCell>
-                  <TableCell className="font-semibold">${sale.total.toFixed(2)}</TableCell>
-                  <TableCell>{sale.fecha}</TableCell>
-                  <TableCell>{getStatusBadge(sale.estado)}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <Button variant="outline" size="sm">
-                        <Eye className="h-4 w-4 mr-1" />
-                        Ver
-                      </Button>
-                      <Button variant="outline" size="sm">
-                        <FileText className="h-4 w-4 mr-1" />
-                        DTE
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          {error && (
+            <Alert variant="destructive" className="mb-4">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
 
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between mt-4">
-              <p className="text-sm text-muted-foreground">
-                Mostrando {startIndex + 1} a {Math.min(startIndex + itemsPerPage, filteredSales.length)} de{" "}
-                {filteredSales.length} ventas
-              </p>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
-                  disabled={currentPage === 1}
-                >
-                  Anterior
-                </Button>
-                <span className="text-sm">
-                  Página {currentPage} de {totalPages}
-                </span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
-                  disabled={currentPage === totalPages}
-                >
-                  Siguiente
-                </Button>
-              </div>
+          {loading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin" />
+              <span className="ml-2">Cargando ventas...</span>
             </div>
+          ) : (
+            <>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Número de venta</TableHead>
+                    <TableHead>Cliente</TableHead>
+                    <TableHead>Total</TableHead>
+                    <TableHead>Fecha</TableHead>
+                    <TableHead>Estado</TableHead>
+                    <TableHead>Acciones</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {paginatedSales.length === 0 ? (
+                    <TableRow>
+                      <TableCell
+                        colSpan={6}
+                        className="text-center py-8 text-muted-foreground"
+                      >
+                        No se encontraron ventas
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    paginatedSales.map((sale) => (
+                      <TableRow key={sale.id}>
+                        <TableCell className="font-medium">
+                          {sale.numero}
+                        </TableCell>
+                        <TableCell>{sale.cliente}</TableCell>
+                        <TableCell className="font-semibold">
+                          ${sale.total.toFixed(2)}
+                        </TableCell>
+                        <TableCell>{sale.fecha}</TableCell>
+                        <TableCell>{getStatusBadge(sale.estado || 'pendiente')}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <SaleDetailsDialog saleId={sale.id}>
+                              <Button variant="outline" size="sm">
+                                <Eye className="h-4 w-4 mr-1" />
+                                Ver
+                              </Button>
+                            </SaleDetailsDialog>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleDTE(sale)}
+                            >
+                              <FileText className="h-4 w-4 mr-1" />
+                              DTE
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between mt-4">
+                  <p className="text-sm text-muted-foreground">
+                    Mostrando {(currentPage - 1) * itemsPerPage + 1} a{" "}
+                    {Math.min(currentPage * itemsPerPage, totalSales)} de{" "}
+                    {totalSales} ventas
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        setCurrentPage((prev) => Math.max(1, prev - 1))
+                      }
+                      disabled={currentPage === 1 || loading}
+                    >
+                      Anterior
+                    </Button>
+                    <span className="text-sm">
+                      Página {currentPage} de {totalPages}
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        setCurrentPage((prev) => Math.min(totalPages, prev + 1))
+                      }
+                      disabled={currentPage === totalPages || loading}
+                    >
+                      Siguiente
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }
