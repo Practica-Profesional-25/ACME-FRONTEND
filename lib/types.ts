@@ -72,15 +72,16 @@ export function apiProductToSaleProduct(
   apiProduct: ApiProduct,
   quantity: number = 1
 ): SaleProduct {
-  const subtotal = apiProduct.precio * quantity;
-  const tax = subtotal * 0.13; // 13% IVA
-  const total = subtotal + tax;
+  const unitPrice = parseFloat(apiProduct.precio.toFixed(2));
+  const subtotal = parseFloat((unitPrice * quantity).toFixed(2));
+  const tax = parseFloat((subtotal * 0.13).toFixed(2)); // 13% IVA
+  const total = parseFloat((subtotal + tax).toFixed(2));
 
   return {
     id: apiProduct.id,
     name: apiProduct.nombre,
     quantity,
-    unitPrice: apiProduct.precio,
+    unitPrice,
     subtotal,
     tax,
     total,

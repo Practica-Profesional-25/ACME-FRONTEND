@@ -281,7 +281,7 @@ export function ProductSelection({
             ? {
                 ...p,
                 quantity: p.quantity + quantity,
-                total: p.unitPrice * (p.quantity + quantity),
+                total: parseFloat((p.unitPrice * (p.quantity + quantity)).toFixed(2)),
               }
             : p
         ),
@@ -332,7 +332,7 @@ export function ProductSelection({
       ...saleData,
       products: saleData.products.map((p) =>
         p.id === productId
-          ? { ...p, quantity: newQuantity, total: p.unitPrice * newQuantity }
+          ? { ...p, quantity: newQuantity, total: parseFloat((p.unitPrice * newQuantity).toFixed(2)) }
           : p
       ),
     });
