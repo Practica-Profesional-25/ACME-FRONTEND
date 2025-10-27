@@ -333,7 +333,7 @@ export function ProductManagement() {
       }
 
       // Validar que precio y stock sean números válidos
-      const precio = parseFloat(formData.precio);
+      const precio = parseFloat(parseFloat(formData.precio).toFixed(2));
       const stock = parseInt(formData.stock);
       
       if (isNaN(precio) || precio <= 0) {

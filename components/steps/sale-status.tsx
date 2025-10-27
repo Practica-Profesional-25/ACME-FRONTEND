@@ -80,11 +80,11 @@ export function SaleStatus({ saleData, setSaleData }: SaleStatusProps) {
         (product) => {
           // Use parseFloat for more robust conversion and ensure valid numbers
           const quantity = parseFloat(String(product.quantity)) || 0;
-          const unitPrice = parseFloat(String(product.unitPrice)) || 0;
-          const tax = parseFloat(String(product.tax)) || 0;
+          const unitPrice = parseFloat(parseFloat(String(product.unitPrice)).toFixed(2)) || 0;
+          const tax = parseFloat(parseFloat(String(product.tax)).toFixed(2)) || 0;
           
-          const productSubtotal = quantity * unitPrice;
-          const productTotal = productSubtotal + tax;
+          const productSubtotal = parseFloat((quantity * unitPrice).toFixed(2));
+          const productTotal = parseFloat((productSubtotal + tax).toFixed(2));
 
           return {
             productId: product.id,
@@ -126,14 +126,14 @@ export function SaleStatus({ saleData, setSaleData }: SaleStatusProps) {
           type: saleData.customer?.type || "default",
         },
         products,
-        subtotal: parseFloat(String(subtotal)) || 0,
-        impuestos: parseFloat(String(impuestos)) || 0,
-        total: parseFloat(String(total)) || 0,
+        subtotal: parseFloat(parseFloat(String(subtotal)).toFixed(2)) || 0,
+        impuestos: parseFloat(parseFloat(String(impuestos)).toFixed(2)) || 0,
+        total: parseFloat(parseFloat(String(total)).toFixed(2)) || 0,
         paymentMethod: saleData.paymentMethod || "efectivo",
         paymentDetails: saleData.paymentMethod === "efectivo" 
           ? {
-              cashAmount: parseFloat(String(saleData.paymentDetails?.cashAmount)) || 0,
-              change: parseFloat(String(saleData.paymentDetails?.change)) || 0,
+              cashAmount: parseFloat(parseFloat(String(saleData.paymentDetails?.cashAmount)).toFixed(2)) || 0,
+              change: parseFloat(parseFloat(String(saleData.paymentDetails?.change)).toFixed(2)) || 0,
             }
           : {
               posStatus: saleData.paymentDetails?.posStatus,

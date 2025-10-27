@@ -90,19 +90,40 @@ export function SalesMain({ onStartSale }: SalesMainProps) {
   const paginatedSales = filteredSales;
 
   const getStatusBadge = (estado: string) => {
-    switch (estado) {
-      case "Completada":
+    switch (estado.toLowerCase()) {
+      case "completada":
+      case "completed":
+      case "procesada":
+      case "processed":
         return (
           <Badge className="bg-secondary text-secondary-foreground">
             Completada
           </Badge>
         );
-      case "Pendiente":
+      case "pendiente":
+      case "pending":
         return <Badge variant="outline">Pendiente</Badge>;
-      case "Cancelada":
+      case "cancelada":
+      case "cancelled":
+      case "canceled":
         return <Badge variant="destructive">Cancelada</Badge>;
       default:
         return <Badge variant="secondary">{estado}</Badge>;
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    try {
+      const date = new Date(dateString)
+      return date.toLocaleDateString('es-SV', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      })
+    } catch {
+      return dateString
     }
   };
 
@@ -115,7 +136,7 @@ export function SalesMain({ onStartSale }: SalesMainProps) {
   // Función para navegar a la página DTE
   const handleDTE = (sale: ApiSale) => {
     // Navegar a la página DTE usando el ID de la venta
-    window.open(`/dte/${sale.id}`, '_blank');
+    window.open(`/dte/${sale.id}`, "_blank");
   };
 
   return (
@@ -195,8 +216,12 @@ export function SalesMain({ onStartSale }: SalesMainProps) {
                         <TableCell className="font-semibold">
                           ${sale.total.toFixed(2)}
                         </TableCell>
-                        <TableCell>{sale.fecha}</TableCell>
-                        <TableCell>{getStatusBadge(sale.estado || 'pendiente')}</TableCell>
+                        <TableCell>{formatDate(sale.fecha)}</TableCell>
+                        <TableCell>
+                          {getStatusBadge(
+                            sale.status || sale.estado || "pendiente"
+                          )}
+                        </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
                             <SaleDetailsDialog saleId={sale.id}>
