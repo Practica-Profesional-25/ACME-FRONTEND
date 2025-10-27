@@ -27,6 +27,7 @@ export function SaleStatus({ saleData, setSaleData }: SaleStatusProps) {
   const [rejectionReason, setRejectionReason] = useState("");
   const [qrCode, setQrCode] = useState("");
   const [dteNumber, setDteNumber] = useState("");
+  const [saleId, setSaleId] = useState("");
   const [hasProcessed, setHasProcessed] = useState(false);
   const processingRef = useRef(false);
   const saleNumberRef = useRef<string | null>(null);
@@ -77,14 +78,19 @@ export function SaleStatus({ saleData, setSaleData }: SaleStatusProps) {
       // Prepare sale data for API according to backend requirements
       const products: SaleProductRequest[] = saleData.products.map(
         (product) => {
-          const productSubtotal = product.quantity * product.unitPrice;
-          const productTotal = productSubtotal + product.tax;
+          // Use parseFloat for more robust conversion and ensure valid numbers
+          const quantity = parseFloat(String(product.quantity)) || 0;
+          const unitPrice = parseFloat(String(product.unitPrice)) || 0;
+          const tax = parseFloat(String(product.tax)) || 0;
+          
+          const productSubtotal = quantity * unitPrice;
+          const productTotal = productSubtotal + tax;
 
           return {
             productId: product.id,
-            quantity: product.quantity,
-            unitPrice: product.unitPrice,
-            tax: product.tax,
+            quantity: quantity,
+            unitPrice: unitPrice,
+            tax: tax,
             subtotal: productSubtotal,
             total: productTotal,
           };
@@ -120,20 +126,18 @@ export function SaleStatus({ saleData, setSaleData }: SaleStatusProps) {
           type: saleData.customer?.type || "default",
         },
         products,
-        subtotal,
-        impuestos,
-        total,
+        subtotal: parseFloat(String(subtotal)) || 0,
+        impuestos: parseFloat(String(impuestos)) || 0,
+        total: parseFloat(String(total)) || 0,
         paymentMethod: saleData.paymentMethod || "efectivo",
-        paymentDetails: {
-          cashAmount: saleData.paymentMethod === "efectivo" ? saleData.paymentDetails?.cashAmount : undefined,
-          change: saleData.paymentMethod === "efectivo" ? saleData.paymentDetails?.change : undefined,
-          posStatus: saleData.paymentDetails?.posStatus,
-          cardType: saleData.paymentMethod === "tarjeta" ? "credit" : undefined,
-          transactionId:
-            saleData.paymentMethod === "tarjeta"
-              ? `TXN-${Date.now()}`
-              : undefined,
-        },
+        paymentDetails: saleData.paymentMethod === "efectivo" 
+          ? {
+              cashAmount: parseFloat(String(saleData.paymentDetails?.cashAmount)) || 0,
+              change: parseFloat(String(saleData.paymentDetails?.change)) || 0,
+            }
+          : {
+              posStatus: saleData.paymentDetails?.posStatus,
+            },
         fecha: new Date().toISOString(),
       };
 
@@ -154,12 +158,13 @@ export function SaleStatus({ saleData, setSaleData }: SaleStatusProps) {
             .toUpperCase()}`;
         const qrData =
           response.data.qrCode ||
-          `https://admin.factura.gob.sv/consultaPublica?ambiente=00&codGeneracion=${dteNum}&fechaEmi=${
+          `https://ejemplo-dte.acme.com/consulta?codigo=${dteNum}&fecha=${
             new Date().toISOString().split("T")[0]
           }`;
 
         setDteNumber(dteNum);
         setQrCode(qrData);
+        setSaleId(response.data.id);
         setSaleData({
           ...saleData,
           status: "efectuada",
@@ -240,7 +245,7 @@ export function SaleStatus({ saleData, setSaleData }: SaleStatusProps) {
               <div className="text-center">
                 <h3 className="text-lg font-semibold">Procesando venta...</h3>
                 <p className="text-muted-foreground">
-                  Enviando información al Ministerio de Hacienda
+                  Enviando información al sistema tributario...
                 </p>
               </div>
             </div>
@@ -365,7 +370,11 @@ export function SaleStatus({ saleData, setSaleData }: SaleStatusProps) {
           <CardContent>
             <div className="text-center space-y-4">
               <div className="flex justify-center">
-                <div className="p-4 bg-white border-2 border-gray-300 rounded-lg">
+                <div 
+                  className="p-4 bg-white border-2 border-gray-300 rounded-lg cursor-pointer hover:border-primary transition-colors"
+                  onClick={() => saleId && window.open(`/dte/${saleId}`, '_blank')}
+                  title="Haz clic para ver el DTE completo"
+                >
                   <img
                     src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(
                       qrCode
@@ -376,8 +385,8 @@ export function SaleStatus({ saleData, setSaleData }: SaleStatusProps) {
                 </div>
               </div>
               <p className="text-sm text-muted-foreground max-w-md mx-auto">
-                Escanea el QR para acceder al documento en el Ministerio de
-                Hacienda
+                Escanea el QR para acceder al documento tributario electrónico, 
+                o haz clic en el QR para ver el DTE completo
               </p>
               <div className="text-xs text-muted-foreground bg-muted p-2 rounded font-mono break-all">
                 {qrCode}

@@ -15,7 +15,7 @@ import { Separator } from "@/components/ui/separator"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Eye, Calendar, User, DollarSign, FileText, Loader2, CreditCard, Package } from "lucide-react"
-import { getSaleById } from "@/lib/api"
+import { getSaleById, processSale } from "@/lib/api";
 import type { ApiSale, CustomerData, PaymentDetails } from "@/lib/types"
 
 interface SaleDetailsDialogProps {
@@ -28,6 +28,32 @@ export function SaleDetailsDialog({ saleId, children }: SaleDetailsDialogProps) 
   const [saleDetails, setSaleDetails] = useState<ApiSale | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [processingDTE, setProcessingDTE] = useState(false)
+
+  const handleProcessDTE = async () => {
+    if (!saleDetails?.id) return;
+    
+    setProcessingDTE(true);
+    try {
+      const response = await processSale(saleDetails.id);
+      if (response.success) {
+        // Mostrar mensaje de éxito
+        alert(response.message || "Venta procesada exitosamente con el Ministerio de Hacienda");
+        // Recargar los detalles de la venta para obtener la información actualizada
+        const updatedResponse = await getSaleById(saleDetails.id);
+        if (updatedResponse.success) {
+          setSaleDetails(updatedResponse.data);
+        }
+      } else {
+        alert(response.message || "Error al procesar la venta");
+      }
+    } catch (error) {
+      console.error('Error al procesar DTE:', error);
+      alert("Error al procesar la venta con el Ministerio de Hacienda");
+    } finally {
+      setProcessingDTE(false);
+    }
+  };
 
   const handleOpenDialog = async () => {
     if (!open) {
@@ -434,112 +460,20 @@ export function SaleDetailsDialog({ saleId, children }: SaleDetailsDialogProps) 
                 Cerrar
               </Button>
               <Button 
-                onClick={() => {
-                  // Generar URL del QR para el DTE
-                  const qrData = saleDetails.qrCode || `https://admin.factura.gob.sv/consultaPublica?ambiente=00&codGeneracion=DTE-${saleDetails.id}&fechaEmi=${saleDetails.fecha}`
-                  const customerData = parseCustomerData(saleDetails.customerData)
-                  
-                  // Abrir en nueva ventana
-                  const newWindow = window.open('', '_blank')
-                  if (newWindow) {
-                    newWindow.document.write(`
-                      <html>
-                        <head>
-                          <title>DTE - ${saleDetails.numero}</title>
-                          <style>
-                            body { font-family: Arial, sans-serif; padding: 20px; text-align: center; }
-                            .header { margin-bottom: 30px; }
-                            .qr-container { margin: 20px 0; }
-                            .details { text-align: left; max-width: 500px; margin: 0 auto; }
-                            .details div { margin: 10px 0; padding: 5px 0; border-bottom: 1px solid #eee; }
-                            .products { margin: 20px 0; }
-                            .products table { width: 100%; border-collapse: collapse; }
-                            .products th, .products td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-                            .products th { background-color: #f2f2f2; }
-                          </style>
-                        </head>
-                        <body>
-                          <div class="header">
-                            <h1>Documento Tributario Electrónico</h1>
-                            <h2>Venta ${saleDetails.numero}</h2>
-                          </div>
-                          <div class="details">
-                            <div><strong>Cliente:</strong> ${customerData?.name || saleDetails.cliente || 'Consumidor Final'}</div>
-                            ${customerData?.email ? `<div><strong>Email:</strong> ${customerData.email}</div>` : ''}
-                            <div><strong>Método de Pago:</strong> ${getPaymentMethodLabel(saleDetails.paymentMethod)}</div>
-                            ${(() => {
-                              const paymentDetails = parsePaymentDetails(saleDetails.paymentDetails)
-                              if (paymentDetails) {
-                                let paymentInfo = ''
-                                if (paymentDetails.cashAmount !== undefined) {
-                                  paymentInfo += `<div><strong>Cantidad Recibida:</strong> ${formatCurrency(paymentDetails.cashAmount)}</div>`
-                                }
-                                if (paymentDetails.change !== undefined) {
-                                  paymentInfo += `<div><strong>Vuelto:</strong> ${formatCurrency(paymentDetails.change)}</div>`
-                                }
-                                if (paymentDetails.posStatus) {
-                                  const statusLabel = paymentDetails.posStatus === 'ready' ? 'Listo' : 
-                                                     paymentDetails.posStatus === 'processing' ? 'Procesando' : 'Procesado'
-                                  paymentInfo += `<div><strong>Estado POS:</strong> ${statusLabel}</div>`
-                                }
-                                return paymentInfo
-                              }
-                              return ''
-                            })()}
-                            <div><strong>Subtotal:</strong> ${formatCurrency(saleDetails.subtotal)}</div>
-                            <div><strong>Impuestos:</strong> ${formatCurrency(saleDetails.impuestos)}</div>
-                            <div><strong>Total:</strong> ${formatCurrency(saleDetails.total)}</div>
-                            <div><strong>Fecha:</strong> ${formatDate(saleDetails.fecha)}</div>
-                            <div><strong>Estado:</strong> ${saleDetails.status || saleDetails.estado || 'Pendiente'}</div>
-                            ${saleDetails.dteNumber ? `<div><strong>Número DTE:</strong> ${saleDetails.dteNumber}</div>` : ''}
-                          </div>
-                          ${saleDetails.products && saleDetails.products.length > 0 ? `
-                            <div class="products">
-                              <h3>Productos</h3>
-                              <table>
-                                <thead>
-                                  <tr>
-                                    <th>Producto</th>
-                                    <th>Cantidad</th>
-                                    <th>Precio Unit.</th>
-                                    <th>Total</th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  ${saleDetails.products.map(product => {
-                                    const productData = parseProductSnapshot(product.productSnapshot)
-                                    return `
-                                      <tr>
-                                        <td>${productData?.nombre || `Producto ${product.productId}`}</td>
-                                        <td>${product.quantity}</td>
-                                        <td>${formatCurrency(product.unitPrice)}</td>
-                                        <td>${formatCurrency(product.total)}</td>
-                                      </tr>
-                                    `
-                                  }).join('')}
-                                </tbody>
-                              </table>
-                            </div>
-                          ` : ''}
-                          <div class="qr-container">
-                            <p>Código QR para verificación:</p>
-                            <div style="margin: 20px 0; padding: 20px; border: 2px dashed #ccc;">
-                              <p style="font-size: 12px; color: #666;">
-                                QR Code: ${qrData}
-                              </p>
-                            </div>
-                          </div>
-                          <button onclick="window.print()" style="padding: 10px 20px; margin: 10px;">Imprimir</button>
-                          <button onclick="window.close()" style="padding: 10px 20px; margin: 10px;">Cerrar</button>
-                        </body>
-                      </html>
-                    `)
-                    newWindow.document.close()
-                  }
-                }}
+                onClick={handleProcessDTE}
+                disabled={processingDTE}
               >
-                <FileText className="h-4 w-4 mr-2" />
-                Generar DTE
+                {processingDTE ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Procesando...
+                  </>
+                ) : (
+                  <>
+                    <FileText className="h-4 w-4 mr-2" />
+                    Generar DTE
+                  </>
+                )}
               </Button>
             </div>
           </div>

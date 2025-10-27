@@ -477,3 +477,34 @@ export async function updateCustomer(
     throw error;
   }
 }
+
+// Función para procesar una venta con DTE
+export async function processSale(id: string): Promise<{
+  success: boolean;
+  message: string;
+  data?: any;
+}> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/sales/${id}/process`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Error ${response.status}: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+
+    if (!data.success) {
+      throw new Error(data.message || "Error al procesar la venta");
+    }
+
+    return data;
+  } catch (error) {
+    console.error("Error processing sale:", error);
+    throw error;
+  }
+}
