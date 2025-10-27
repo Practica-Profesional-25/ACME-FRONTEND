@@ -372,6 +372,102 @@ export function createCustomerSearch() {
   };
 }
 
+// Función para buscar clientes por término de búsqueda
+export async function searchCustomers(
+  searchTerm: string,
+  limit?: number
+): Promise<CustomersApiResponse> {
+  try {
+    const searchParams = new URLSearchParams();
+    searchParams.append("q", searchTerm);
+    if (limit) searchParams.append("limit", limit.toString());
+
+    const response = await fetch(`${API_BASE_URL}/customers/search?${searchParams.toString()}`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Error ${response.status}: ${response.statusText}`);
+    }
+
+    const data: CustomersApiResponse = await response.json();
+
+    if (!data.success) {
+      throw new Error(data.message || "Error al buscar clientes");
+    }
+
+    return data;
+  } catch (error) {
+    console.error("Error searching customers:", error);
+    throw error;
+  }
+}
+
+// Función para obtener estadísticas de clientes por departamento
+export async function getCustomerStatsByDepartment(): Promise<{
+  success: boolean;
+  message: string;
+  data: Array<{ departamento: string; count: number }>;
+}> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/customers/stats/departamento`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Error ${response.status}: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+
+    if (!data.success) {
+      throw new Error(data.message || "Error al obtener estadísticas por departamento");
+    }
+
+    return data;
+  } catch (error) {
+    console.error("Error fetching customer stats by department:", error);
+    throw error;
+  }
+}
+
+// Función para obtener estadísticas de clientes por tipo
+export async function getCustomerStatsByType(): Promise<{
+  success: boolean;
+  message: string;
+  data: Array<{ tipo: string; count: number }>;
+}> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/customers/stats/tipo`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Error ${response.status}: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+
+    if (!data.success) {
+      throw new Error(data.message || "Error al obtener estadísticas por tipo");
+    }
+
+    return data;
+  } catch (error) {
+    console.error("Error fetching customer stats by type:", error);
+    throw error;
+  }
+}
+
 // Función para crear un nuevo cliente
 export async function createCustomer(
   customerData: CreateCustomerRequest
@@ -454,7 +550,7 @@ export async function updateCustomer(
 ): Promise<CustomerApiResponse> {
   try {
     const response = await fetch(`${API_BASE_URL}/customers/${id}`, {
-      method: "PATCH",
+      method: "PUT",
       headers: {
         "Content-Type": "application/json",
       },
@@ -462,7 +558,22 @@ export async function updateCustomer(
     });
 
     if (!response.ok) {
-      throw new Error(`Error ${response.status}: ${response.statusText}`);
+      // Try to get detailed error message from response body
+      let errorMessage = `Error ${response.status}: ${response.statusText}`;
+      try {
+        const errorData = await response.json();
+        if (errorData.message) {
+          if (Array.isArray(errorData.message)) {
+            errorMessage = `Error ${response.status}: ${errorData.message.join(', ')}`;
+          } else {
+            errorMessage = `Error ${response.status}: ${errorData.message}`;
+          }
+        }
+      } catch (parseError) {
+        // If we can't parse the error response, use the default message
+        console.warn("Could not parse error response:", parseError);
+      }
+      throw new Error(errorMessage);
     }
 
     const data: CustomerApiResponse = await response.json();
@@ -474,6 +585,51 @@ export async function updateCustomer(
     return data;
   } catch (error) {
     console.error("Error updating customer:", error);
+    throw error;
+  }
+}
+
+// Función para eliminar un cliente
+export async function deleteCustomer(id: string): Promise<{
+  success: boolean;
+  message: string;
+}> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/customers/${id}`, {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      // Try to get detailed error message from response body
+      let errorMessage = `Error ${response.status}: ${response.statusText}`;
+      try {
+        const errorData = await response.json();
+        if (errorData.message) {
+          if (Array.isArray(errorData.message)) {
+            errorMessage = `Error ${response.status}: ${errorData.message.join(', ')}`;
+          } else {
+            errorMessage = `Error ${response.status}: ${errorData.message}`;
+          }
+        }
+      } catch (parseError) {
+        // If we can't parse the error response, use the default message
+        console.warn("Could not parse error response:", parseError);
+      }
+      throw new Error(errorMessage);
+    }
+
+    const data = await response.json();
+
+    if (!data.success) {
+      throw new Error(data.message || "Error al eliminar cliente");
+    }
+
+    return data;
+  } catch (error) {
+    console.error("Error deleting customer:", error);
     throw error;
   }
 }
