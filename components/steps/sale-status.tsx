@@ -80,9 +80,11 @@ export function SaleStatus({ saleData, setSaleData }: SaleStatusProps) {
         (product) => {
           // Use parseFloat for more robust conversion and ensure valid numbers
           const quantity = parseFloat(String(product.quantity)) || 0;
-          const unitPrice = parseFloat(parseFloat(String(product.unitPrice)).toFixed(2)) || 0;
-          const tax = parseFloat(parseFloat(String(product.tax)).toFixed(2)) || 0;
-          
+          const unitPrice =
+            parseFloat(parseFloat(String(product.unitPrice)).toFixed(2)) || 0;
+          const tax =
+            parseFloat(parseFloat(String(product.tax)).toFixed(2)) || 0;
+
           const productSubtotal = parseFloat((quantity * unitPrice).toFixed(2));
           const productTotal = parseFloat((productSubtotal + tax).toFixed(2));
 
@@ -130,14 +132,25 @@ export function SaleStatus({ saleData, setSaleData }: SaleStatusProps) {
         impuestos: parseFloat(parseFloat(String(impuestos)).toFixed(2)) || 0,
         total: parseFloat(parseFloat(String(total)).toFixed(2)) || 0,
         paymentMethod: saleData.paymentMethod || "efectivo",
-        paymentDetails: saleData.paymentMethod === "efectivo" 
-          ? {
-              cashAmount: parseFloat(parseFloat(String(saleData.paymentDetails?.cashAmount)).toFixed(2)) || 0,
-              change: parseFloat(parseFloat(String(saleData.paymentDetails?.change)).toFixed(2)) || 0,
-            }
-          : {
-              posStatus: saleData.paymentDetails?.posStatus,
-            },
+        paymentDetails:
+          saleData.paymentMethod === "efectivo"
+            ? {
+                cashAmount:
+                  parseFloat(
+                    parseFloat(
+                      String(saleData.paymentDetails?.cashAmount)
+                    ).toFixed(2)
+                  ) || 0,
+                change:
+                  parseFloat(
+                    parseFloat(String(saleData.paymentDetails?.change)).toFixed(
+                      2
+                    )
+                  ) || 0,
+              }
+            : {
+                posStatus: saleData.paymentDetails?.posStatus,
+              },
         fecha: new Date().toISOString(),
       };
 
@@ -230,7 +243,7 @@ export function SaleStatus({ saleData, setSaleData }: SaleStatusProps) {
   };
 
   const totalAmount = saleData.products.reduce(
-    (sum, product) => sum + product.total,
+    (sum, product) => sum + product.total + product.tax * product.quantity,
     0
   );
 
@@ -370,9 +383,11 @@ export function SaleStatus({ saleData, setSaleData }: SaleStatusProps) {
           <CardContent>
             <div className="text-center space-y-4">
               <div className="flex justify-center">
-                <div 
+                <div
                   className="p-4 bg-white border-2 border-gray-300 rounded-lg cursor-pointer hover:border-primary transition-colors"
-                  onClick={() => saleId && window.open(`/dte/${saleId}`, '_blank')}
+                  onClick={() =>
+                    saleId && window.open(`/dte/${saleId}`, "_blank")
+                  }
                   title="Haz clic para ver el DTE completo"
                 >
                   <img
@@ -385,7 +400,7 @@ export function SaleStatus({ saleData, setSaleData }: SaleStatusProps) {
                 </div>
               </div>
               <p className="text-sm text-muted-foreground max-w-md mx-auto">
-                Escanea el QR para acceder al documento tributario electrónico, 
+                Escanea el QR para acceder al documento tributario electrónico,
                 o haz clic en el QR para ver el DTE completo
               </p>
               <div className="text-xs text-muted-foreground bg-muted p-2 rounded font-mono break-all">
@@ -449,7 +464,7 @@ export function SaleStatus({ saleData, setSaleData }: SaleStatusProps) {
                 <p className="font-semibold">
                   $
                   {saleData.products
-                    .reduce((sum, p) => sum + p.tax, 0)
+                    .reduce((sum, p) => sum + p.tax * p.quantity, 0)
                     .toFixed(2)}
                 </p>
               </div>
