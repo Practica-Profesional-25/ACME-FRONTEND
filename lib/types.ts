@@ -287,3 +287,9 @@ export interface CreateSaleResponse {
     qrCode?: string;
   };
 }
+
+// Tipo para la respuesta del reenvío de factura
+export interface ResendInvoiceResponse {
+  success: boolean;
+  message: string;
+}

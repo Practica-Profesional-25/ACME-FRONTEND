@@ -550,7 +550,7 @@ export async function updateCustomer(
 ): Promise<CustomerApiResponse> {
   try {
     const response = await fetch(`${API_BASE_URL}/customers/${id}`, {
-      method: "PUT",
+      method: "PATCH",
       headers: {
         "Content-Type": "application/json",
       },
@@ -661,6 +661,45 @@ export async function processSale(id: string): Promise<{
     return data;
   } catch (error) {
     console.error("Error processing sale:", error);
+    throw error;
+  }
+}
+
+// Función para reenviar factura y DTE por email
+export async function resendInvoice(id: string): Promise<{
+  success: boolean;
+  message: string;
+}> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/sales/${id}/resend-invoice`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      // Try to get detailed error message from response body
+      let errorMessage = `Error ${response.status}: ${response.statusText}`;
+      try {
+        const errorData = await response.json();
+        if (errorData.message) {
+          errorMessage = `Error ${response.status}: ${errorData.message}`;
+        }
+      } catch (parseError) {
+        // If we can't parse the error response, use the default message
+        console.warn("Could not parse error response:", parseError);
+      }
+      throw new Error(errorMessage);
+    }
+
+    const data = await response.json();
+    return {
+      success: data.success || true,
+      message: data.message || "Factura y DTE reenviados exitosamente",
+    };
+  } catch (error) {
+    console.error("Error resending invoice:", error);
     throw error;
   }
 }
