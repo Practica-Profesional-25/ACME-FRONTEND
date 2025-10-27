@@ -168,14 +168,14 @@ export interface ApiCustomer {
   email?: string;
   dui?: string;
   nit?: string;
+  telefono?: string;
+  direccion?: string;
+  tipo: "Natural";
   registroFiscal?: string;
   giro?: string;
-  telefono?: string;
   departamento?: string;
   municipio?: string;
   distrito?: string;
-  direccion?: string;
-  tipo: "factura" | "credito-fiscal" | "default";
   createdAt: string;
   updatedAt: string;
 }
@@ -196,7 +196,7 @@ export interface CustomerFilters {
   dui?: string;
   nit?: string;
   email?: string;
-  tipo?: "factura" | "credito-fiscal" | "default";
+  tipo?: "Natural";
   page?: number;
   limit?: number;
 }
@@ -207,14 +207,14 @@ export interface CreateCustomerRequest {
   email?: string;
   dui?: string;
   nit?: string;
+  telefono?: string;
+  direccion?: string;
+  tipo: "Natural";
   registroFiscal?: string;
   giro?: string;
-  telefono?: string;
   departamento?: string;
   municipio?: string;
   distrito?: string;
-  direccion?: string;
-  tipo: "Natural";
 }
 
 export interface UpdateCustomerRequest {
@@ -222,14 +222,14 @@ export interface UpdateCustomerRequest {
   email?: string;
   dui?: string;
   nit?: string;
+  telefono?: string;
+  direccion?: string;
+  tipo?: "Natural";
   registroFiscal?: string;
   giro?: string;
-  telefono?: string;
   departamento?: string;
   municipio?: string;
   distrito?: string;
-  direccion?: string;
-  tipo?: "factura" | "credito-fiscal" | "default";
 }
 
 export interface CustomerApiResponse {
@@ -286,4 +286,10 @@ export interface CreateSaleResponse {
     dte?: string;
     qrCode?: string;
   };
+}
+
+// Tipo para la respuesta del reenvío de factura
+export interface ResendInvoiceResponse {
+  success: boolean;
+  message: string;
 }

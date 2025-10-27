@@ -1,6 +1,6 @@
-"use client"
+"use client";
 
-import { useState } from "react"
+import { useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -8,37 +8,61 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Separator } from "@/components/ui/separator"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Eye, Calendar, User, DollarSign, FileText, Loader2, CreditCard, Package } from "lucide-react"
-import { getSaleById, processSale } from "@/lib/api";
-import type { ApiSale, CustomerData, PaymentDetails } from "@/lib/types"
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Eye,
+  Calendar,
+  User,
+  DollarSign,
+  FileText,
+  Loader2,
+  CreditCard,
+  Package,
+  Mail,
+} from "lucide-react";
+import { getSaleById, processSale, resendInvoice } from "@/lib/api";
+import type { ApiSale, CustomerData, PaymentDetails } from "@/lib/types";
 
 interface SaleDetailsDialogProps {
-  saleId: string
-  children?: React.ReactNode
+  saleId: string;
+  children?: React.ReactNode;
 }
 
-export function SaleDetailsDialog({ saleId, children }: SaleDetailsDialogProps) {
-  const [open, setOpen] = useState(false)
-  const [saleDetails, setSaleDetails] = useState<ApiSale | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [processingDTE, setProcessingDTE] = useState(false)
+export function SaleDetailsDialog({
+  saleId,
+  children,
+}: SaleDetailsDialogProps) {
+  const [open, setOpen] = useState(false);
+  const [saleDetails, setSaleDetails] = useState<ApiSale | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [processingDTE, setProcessingDTE] = useState(false);
+  const [resendingInvoice, setResendingInvoice] = useState(false);
 
   const handleProcessDTE = async () => {
     if (!saleDetails?.id) return;
-    
+
     setProcessingDTE(true);
     try {
       const response = await processSale(saleDetails.id);
       if (response.success) {
         // Mostrar mensaje de éxito
-        alert(response.message || "Venta procesada exitosamente con el Ministerio de Hacienda");
+        alert(
+          response.message ||
+            "Venta procesada exitosamente con el Ministerio de Hacienda"
+        );
         // Recargar los detalles de la venta para obtener la información actualizada
         const updatedResponse = await getSaleById(saleDetails.id);
         if (updatedResponse.success) {
@@ -48,110 +72,134 @@ export function SaleDetailsDialog({ saleId, children }: SaleDetailsDialogProps) 
         alert(response.message || "Error al procesar la venta");
       }
     } catch (error) {
-      console.error('Error al procesar DTE:', error);
+      console.error("Error al procesar DTE:", error);
       alert("Error al procesar la venta con el Ministerio de Hacienda");
     } finally {
       setProcessingDTE(false);
     }
   };
 
+  const handleResendInvoice = async () => {
+    if (!saleDetails?.id) return;
+
+    setResendingInvoice(true);
+    try {
+      const response = await resendInvoice(saleDetails.id);
+      if (response.success) {
+        alert(response.message || "Factura y DTE reenviados exitosamente");
+      } else {
+        alert(response.message || "Error al reenviar la factura");
+      }
+    } catch (error) {
+      console.error("Error al reenviar factura:", error);
+      const errorMessage = error instanceof Error ? error.message : "Error desconocido";
+      alert(`Error al reenviar la factura: ${errorMessage}`);
+    } finally {
+      setResendingInvoice(false);
+    }
+  };
+
   const handleOpenDialog = async () => {
     if (!open) {
-      setLoading(true)
-      setError(null)
+      setLoading(true);
+      setError(null);
       try {
-        const response = await getSaleById(saleId)
+        const response = await getSaleById(saleId);
         if (response.success) {
-          setSaleDetails(response.data)
+          setSaleDetails(response.data);
         } else {
-          setError("Error al cargar los detalles de la venta")
+          setError("Error al cargar los detalles de la venta");
         }
       } catch (error) {
-        console.error('Error al obtener detalles de la venta:', error)
-        setError("Error al cargar los detalles de la venta")
+        console.error("Error al obtener detalles de la venta:", error);
+        setError("Error al cargar los detalles de la venta");
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
     }
-    setOpen(!open)
-  }
+    setOpen(!open);
+  };
 
   const getStatusBadgeVariant = (status: string) => {
     switch (status.toLowerCase()) {
-      case 'efectuada':
-      case 'completada':
-      case 'completed':
-        return 'default'
-      case 'pendiente':
-      case 'pending':
-        return 'secondary'
-      case 'rechazada':
-      case 'cancelada':
-      case 'rejected':
-        return 'destructive'
+      case "efectuada":
+      case "completada":
+      case "completed":
+        return "default";
+      case "pendiente":
+      case "pending":
+        return "secondary";
+      case "rechazada":
+      case "cancelada":
+      case "rejected":
+        return "destructive";
       default:
-        return 'outline'
+        return "outline";
     }
-  }
+  };
 
   const formatDate = (dateString: string) => {
     try {
-      const date = new Date(dateString)
-      return date.toLocaleDateString('es-SV', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      })
+      const date = new Date(dateString);
+      return date.toLocaleDateString("es-SV", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
     } catch {
-      return dateString
+      return dateString;
     }
-  }
+  };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('es-SV', {
-      style: 'currency',
-      currency: 'USD'
-    }).format(amount)
-  }
+    return new Intl.NumberFormat("es-SV", {
+      style: "currency",
+      currency: "USD",
+    }).format(amount);
+  };
 
-  const parseCustomerData = (customerDataString: string): CustomerData | null => {
+  const parseCustomerData = (
+    customerDataString: string
+  ): CustomerData | null => {
     try {
-      return JSON.parse(customerDataString)
+      return JSON.parse(customerDataString);
     } catch {
-      return null
+      return null;
     }
-  }
+  };
 
-  const parsePaymentDetails = (paymentDetailsString: string): PaymentDetails | null => {
+  const parsePaymentDetails = (
+    paymentDetailsString: string
+  ): PaymentDetails | null => {
     try {
-      return JSON.parse(paymentDetailsString)
+      return JSON.parse(paymentDetailsString);
     } catch {
-      return null
+      return null;
     }
-  }
+  };
 
   const parseProductSnapshot = (productSnapshotString: string) => {
     try {
-      return JSON.parse(productSnapshotString)
+      return JSON.parse(productSnapshotString);
     } catch {
-      return null
+      return null;
     }
-  }
+  };
 
   const getPaymentMethodLabel = (method: string) => {
     switch (method.toLowerCase()) {
-      case 'efectivo':
-        return 'Efectivo'
-      case 'tarjeta':
-        return 'Tarjeta'
-      case 'transferencia':
-        return 'Transferencia'
+      case "efectivo":
+        return "Efectivo";
+      case "tarjeta":
+        return "Tarjeta";
+      case "transferencia":
+        return "Transferencia";
       default:
-        return method
+        return method;
     }
-  }
+  };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -194,8 +242,12 @@ export function SaleDetailsDialog({ saleId, children }: SaleDetailsDialogProps) 
               <CardHeader>
                 <CardTitle className="text-lg flex items-center justify-between">
                   <span>Información General</span>
-                  <Badge variant={getStatusBadgeVariant(saleDetails.status || saleDetails.estado || 'pending')}>
-                    {saleDetails.status || saleDetails.estado || 'Pendiente'}
+                  <Badge
+                    variant={getStatusBadgeVariant(
+                      saleDetails.status || saleDetails.estado || "pending"
+                    )}
+                  >
+                    {saleDetails.status || saleDetails.estado || "Pendiente"}
                   </Badge>
                 </CardTitle>
               </CardHeader>
@@ -204,21 +256,21 @@ export function SaleDetailsDialog({ saleId, children }: SaleDetailsDialogProps) 
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
                       <FileText className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm font-medium">Número de Venta:</span>
+                      <span className="text-sm font-medium">
+                        Número de Venta:
+                      </span>
                     </div>
                     <p className="text-lg font-mono bg-muted px-3 py-2 rounded">
                       {saleDetails.numero}
                     </p>
                   </div>
-                  
+
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
                       <Calendar className="h-4 w-4 text-muted-foreground" />
                       <span className="text-sm font-medium">Fecha:</span>
                     </div>
-                    <p className="text-lg">
-                      {formatDate(saleDetails.fecha)}
-                    </p>
+                    <p className="text-lg">{formatDate(saleDetails.fecha)}</p>
                   </div>
                 </div>
 
@@ -231,19 +283,25 @@ export function SaleDetailsDialog({ saleId, children }: SaleDetailsDialogProps) 
                   </div>
                   <div className="bg-muted p-3 rounded">
                     {(() => {
-                      const customerData = parseCustomerData(saleDetails.customerData)
+                      const customerData = parseCustomerData(
+                        saleDetails.customerData
+                      );
                       if (customerData) {
                         return (
                           <div className="space-y-1">
                             <p className="font-medium">{customerData.name}</p>
                             {customerData.email && (
-                              <p className="text-sm text-muted-foreground">{customerData.email}</p>
+                              <p className="text-sm text-muted-foreground">
+                                {customerData.email}
+                              </p>
                             )}
-                            <p className="text-xs text-muted-foreground">Tipo: {customerData.type}</p>
+                            <p className="text-xs text-muted-foreground">
+                              Tipo: {customerData.type}
+                            </p>
                           </div>
-                        )
+                        );
                       }
-                      return <p>{saleDetails.cliente || 'Consumidor Final'}</p>
+                      return <p>{saleDetails.cliente || "Consumidor Final"}</p>;
                     })()}
                   </div>
                 </div>
@@ -252,13 +310,17 @@ export function SaleDetailsDialog({ saleId, children }: SaleDetailsDialogProps) 
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="space-y-2">
-                    <span className="text-sm font-medium text-muted-foreground">Subtotal:</span>
+                    <span className="text-sm font-medium text-muted-foreground">
+                      Subtotal:
+                    </span>
                     <p className="text-lg font-semibold">
                       {formatCurrency(saleDetails.subtotal)}
                     </p>
                   </div>
                   <div className="space-y-2">
-                    <span className="text-sm font-medium text-muted-foreground">Impuestos:</span>
+                    <span className="text-sm font-medium text-muted-foreground">
+                      Impuestos:
+                    </span>
                     <p className="text-lg font-semibold">
                       {formatCurrency(saleDetails.impuestos)}
                     </p>
@@ -293,48 +355,72 @@ export function SaleDetailsDialog({ saleId, children }: SaleDetailsDialogProps) 
                     </Badge>
                   </div>
                   {(() => {
-                     const paymentDetails = parsePaymentDetails(saleDetails.paymentDetails)
-                     if (paymentDetails) {
-                       return (
-                         <div className="bg-muted p-3 rounded space-y-2">
-                           {paymentDetails.cashAmount !== undefined && (
-                             <div className="flex justify-between">
-                               <span className="text-sm">Cantidad recibida:</span>
-                               <span className="text-sm font-medium">{formatCurrency(paymentDetails.cashAmount)}</span>
-                             </div>
-                           )}
-                           {paymentDetails.change !== undefined && (
-                             <div className="flex justify-between">
-                               <span className="text-sm">Vuelto:</span>
-                               <span className="text-sm font-medium">{formatCurrency(paymentDetails.change)}</span>
-                             </div>
-                           )}
-                           {paymentDetails.posStatus && (
-                             <div className="flex justify-between">
-                               <span className="text-sm">Estado POS:</span>
-                               <Badge variant={paymentDetails.posStatus === 'processed' ? 'default' : 'secondary'} className="text-xs">
-                                 {paymentDetails.posStatus === 'ready' ? 'Listo' : 
-                                  paymentDetails.posStatus === 'processing' ? 'Procesando' : 'Procesado'}
-                               </Badge>
-                             </div>
-                           )}
-                           {paymentDetails.cardType && (
-                             <div className="flex justify-between">
-                               <span className="text-sm">Tipo de tarjeta:</span>
-                               <span className="text-sm font-medium">{paymentDetails.cardType}</span>
-                             </div>
-                           )}
-                           {paymentDetails.transactionId && (
-                             <div className="flex justify-between">
-                               <span className="text-sm">ID de transacción:</span>
-                               <span className="text-sm font-mono">{paymentDetails.transactionId}</span>
-                             </div>
-                           )}
-                         </div>
-                       )
-                     }
-                     return null
-                   })()}
+                    const paymentDetails = parsePaymentDetails(
+                      saleDetails.paymentDetails
+                    );
+                    if (paymentDetails) {
+                      return (
+                        <div className="bg-muted p-3 rounded space-y-2">
+                          {paymentDetails.cashAmount !== undefined && (
+                            <div className="flex justify-between">
+                              <span className="text-sm">
+                                Cantidad recibida:
+                              </span>
+                              <span className="text-sm font-medium">
+                                {formatCurrency(paymentDetails.cashAmount)}
+                              </span>
+                            </div>
+                          )}
+                          {paymentDetails.change !== undefined && (
+                            <div className="flex justify-between">
+                              <span className="text-sm">Vuelto:</span>
+                              <span className="text-sm font-medium">
+                                {formatCurrency(paymentDetails.change)}
+                              </span>
+                            </div>
+                          )}
+                          {paymentDetails.posStatus && (
+                            <div className="flex justify-between">
+                              <span className="text-sm">Estado POS:</span>
+                              <Badge
+                                variant={
+                                  paymentDetails.posStatus === "processed"
+                                    ? "default"
+                                    : "secondary"
+                                }
+                                className="text-xs"
+                              >
+                                {paymentDetails.posStatus === "ready"
+                                  ? "Listo"
+                                  : paymentDetails.posStatus === "processing"
+                                  ? "Procesando"
+                                  : "Procesado"}
+                              </Badge>
+                            </div>
+                          )}
+                          {paymentDetails.cardType && (
+                            <div className="flex justify-between">
+                              <span className="text-sm">Tipo de tarjeta:</span>
+                              <span className="text-sm font-medium">
+                                {paymentDetails.cardType}
+                              </span>
+                            </div>
+                          )}
+                          {paymentDetails.transactionId && (
+                            <div className="flex justify-between">
+                              <span className="text-sm">
+                                ID de transacción:
+                              </span>
+                              <span className="text-sm font-mono">
+                                {paymentDetails.transactionId}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
                 </div>
               </CardContent>
             </Card>
@@ -354,7 +440,9 @@ export function SaleDetailsDialog({ saleId, children }: SaleDetailsDialogProps) 
                       <TableRow>
                         <TableHead>Producto</TableHead>
                         <TableHead className="text-center">Cantidad</TableHead>
-                        <TableHead className="text-right">Precio Unit.</TableHead>
+                        <TableHead className="text-right">
+                          Precio Unit.
+                        </TableHead>
                         <TableHead className="text-right">Subtotal</TableHead>
                         <TableHead className="text-right">Impuesto</TableHead>
                         <TableHead className="text-right">Total</TableHead>
@@ -362,13 +450,16 @@ export function SaleDetailsDialog({ saleId, children }: SaleDetailsDialogProps) 
                     </TableHeader>
                     <TableBody>
                       {saleDetails.products.map((product) => {
-                        const productData = parseProductSnapshot(product.productSnapshot)
+                        const productData = parseProductSnapshot(
+                          product.productSnapshot
+                        );
                         return (
                           <TableRow key={product.id}>
                             <TableCell>
                               <div className="space-y-1">
                                 <p className="font-medium">
-                                  {productData?.nombre || `Producto ${product.productId}`}
+                                  {productData?.nombre ||
+                                    `Producto ${product.productId}`}
                                 </p>
                                 {productData?.identificador && (
                                   <p className="text-xs text-muted-foreground">
@@ -377,18 +468,31 @@ export function SaleDetailsDialog({ saleId, children }: SaleDetailsDialogProps) 
                                 )}
                                 {productData?.categoria && (
                                   <p className="text-xs text-muted-foreground">
-                                    {productData.categoria} - {productData.subcategoria}
+                                    {productData.categoria} -{" "}
+                                    {productData.subcategoria}
                                   </p>
                                 )}
                               </div>
                             </TableCell>
-                            <TableCell className="text-center">{product.quantity}</TableCell>
-                            <TableCell className="text-right">{formatCurrency(product.unitPrice)}</TableCell>
-                            <TableCell className="text-right">{formatCurrency(product.subtotal)}</TableCell>
-                            <TableCell className="text-right">{formatCurrency(product.tax)}</TableCell>
-                            <TableCell className="text-right font-semibold">{formatCurrency(product.total)}</TableCell>
+                            <TableCell className="text-center">
+                              {product.quantity}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {formatCurrency(product.unitPrice)}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {formatCurrency(product.subtotal)}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {formatCurrency(product.tax)}
+                            </TableCell>
+                            <TableCell className="text-right font-semibold">
+                              {formatCurrency(
+                                product.total + product.tax * product.quantity
+                              )}
+                            </TableCell>
                           </TableRow>
-                        )
+                        );
                       })}
                     </TableBody>
                   </Table>
@@ -404,30 +508,38 @@ export function SaleDetailsDialog({ saleId, children }: SaleDetailsDialogProps) 
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <span className="text-sm font-medium text-muted-foreground">ID de Venta:</span>
+                    <span className="text-sm font-medium text-muted-foreground">
+                      ID de Venta:
+                    </span>
                     <p className="font-mono text-sm bg-muted px-2 py-1 rounded">
                       {saleDetails.id}
                     </p>
                   </div>
-                  
+
                   {saleDetails.customerId && (
                     <div className="space-y-2">
-                      <span className="text-sm font-medium text-muted-foreground">ID de Cliente:</span>
+                      <span className="text-sm font-medium text-muted-foreground">
+                        ID de Cliente:
+                      </span>
                       <p className="font-mono text-sm bg-muted px-2 py-1 rounded">
                         {saleDetails.customerId}
                       </p>
                     </div>
                   )}
-                  
+
                   <div className="space-y-2">
-                    <span className="text-sm font-medium text-muted-foreground">Fecha de Creación:</span>
+                    <span className="text-sm font-medium text-muted-foreground">
+                      Fecha de Creación:
+                    </span>
                     <p className="text-sm">
                       {formatDate(saleDetails.createdAt)}
                     </p>
                   </div>
 
                   <div className="space-y-2">
-                    <span className="text-sm font-medium text-muted-foreground">Última Actualización:</span>
+                    <span className="text-sm font-medium text-muted-foreground">
+                      Última Actualización:
+                    </span>
                     <p className="text-sm">
                       {formatDate(saleDetails.updatedAt)}
                     </p>
@@ -436,7 +548,9 @@ export function SaleDetailsDialog({ saleId, children }: SaleDetailsDialogProps) 
 
                 {saleDetails.dteNumber && (
                   <div className="space-y-2">
-                    <span className="text-sm font-medium text-muted-foreground">Número DTE:</span>
+                    <span className="text-sm font-medium text-muted-foreground">
+                      Número DTE:
+                    </span>
                     <p className="font-mono text-sm bg-muted px-2 py-1 rounded">
                       {saleDetails.dteNumber}
                     </p>
@@ -445,7 +559,9 @@ export function SaleDetailsDialog({ saleId, children }: SaleDetailsDialogProps) 
 
                 {saleDetails.rejectionReason && (
                   <div className="space-y-2">
-                    <span className="text-sm font-medium text-destructive">Razón de Rechazo:</span>
+                    <span className="text-sm font-medium text-destructive">
+                      Razón de Rechazo:
+                    </span>
                     <p className="text-sm bg-destructive/10 px-3 py-2 rounded border border-destructive/20">
                       {saleDetails.rejectionReason}
                     </p>
@@ -455,30 +571,44 @@ export function SaleDetailsDialog({ saleId, children }: SaleDetailsDialogProps) 
             </Card>
 
             {/* Acciones adicionales */}
-            <div className="flex justify-end gap-2 pt-4">
-              <Button variant="outline" onClick={() => setOpen(false)}>
-                Cerrar
-              </Button>
-              <Button 
-                onClick={handleProcessDTE}
-                disabled={processingDTE}
-              >
-                {processingDTE ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Procesando...
-                  </>
-                ) : (
-                  <>
-                    <FileText className="h-4 w-4 mr-2" />
-                    Generar DTE
-                  </>
-                )}
-              </Button>
-            </div>
+             <div className="flex justify-end gap-2 pt-4">
+               <Button variant="outline" onClick={() => setOpen(false)}>
+                 Cerrar
+               </Button>
+               <Button 
+                 variant="secondary" 
+                 onClick={handleResendInvoice} 
+                 disabled={resendingInvoice}
+               >
+                 {resendingInvoice ? (
+                   <>
+                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                     Enviando...
+                   </>
+                 ) : (
+                   <>
+                     <Mail className="h-4 w-4 mr-2" />
+                     Reenviar Factura
+                   </>
+                 )}
+               </Button>
+               <Button onClick={handleProcessDTE} disabled={processingDTE}>
+                 {processingDTE ? (
+                   <>
+                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                     Procesando...
+                   </>
+                 ) : (
+                   <>
+                     <FileText className="h-4 w-4 mr-2" />
+                     Generar DTE
+                   </>
+                 )}
+               </Button>
+             </div>
           </div>
         )}
       </DialogContent>
     </Dialog>
-  )
+  );
 }
