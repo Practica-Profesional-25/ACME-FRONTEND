@@ -1,110 +1,238 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Label } from "@/components/ui/label"
-import { CheckCircle, XCircle, QrCode, Printer, RefreshCw, AlertCircle } from "lucide-react"
-import type { SaleData } from "../sales-wizard"
+import { useState, useEffect, useRef } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
+import {
+  CheckCircle,
+  XCircle,
+  QrCode,
+  Printer,
+  RefreshCw,
+  AlertCircle,
+} from "lucide-react";
+import { createSale } from "@/lib/api";
+import type { SaleData } from "../sales-wizard";
+import type { CreateSaleRequest, SaleProductRequest } from "@/lib/types";
 
 interface SaleStatusProps {
-  saleData: SaleData
-  setSaleData: (data: SaleData) => void
+  saleData: SaleData;
+  setSaleData: (data: SaleData) => void;
 }
 
 export function SaleStatus({ saleData, setSaleData }: SaleStatusProps) {
-  const [isProcessing, setIsProcessing] = useState(false)
-  const [rejectionReason, setRejectionReason] = useState("")
-  const [qrCode, setQrCode] = useState("")
-  const [dteNumber, setDteNumber] = useState("")
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState("");
+  const [qrCode, setQrCode] = useState("");
+  const [dteNumber, setDteNumber] = useState("");
+  const [saleId, setSaleId] = useState("");
+  const [hasProcessed, setHasProcessed] = useState(false);
+  const processingRef = useRef(false);
+  const saleNumberRef = useRef<string | null>(null);
 
   useEffect(() => {
-    // Simulate sale processing when component mounts
-    if (saleData.status === "pending") {
-      setIsProcessing(true)
-
-      // Simulate processing time
-      setTimeout(() => {
-        // Randomly determine if sale is successful (90% success rate)
-        const isSuccessful = Math.random() > 0.1
-
-        if (isSuccessful) {
-          const dteNum = `DTE-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`
-          const qrData = `https://admin.factura.gob.sv/consultaPublica?ambiente=00&codGeneracion=${dteNum}&fechaEmi=${new Date().toISOString().split("T")[0]}`
-
-          setDteNumber(dteNum)
-          setQrCode(qrData)
-          setSaleData({
-            ...saleData,
-            status: "efectuada",
-          })
-        } else {
-          setSaleData({
-            ...saleData,
-            status: "rechazada",
-            rejectionReason: "Error en la conexión con el Ministerio de Hacienda",
-          })
-        }
-
-        setIsProcessing(false)
-      }, 3000)
+    // Process sale when component mounts, but only once and if not already processing
+    console.log("Sale status:", saleData.status);
+    console.log("Is processing:", isProcessing);
+    console.log("Has processed:", hasProcessed);
+    console.log("Processing ref:", processingRef.current);
+    if (
+      saleData.status === "pending" &&
+      !isProcessing &&
+      !hasProcessed &&
+      !processingRef.current
+    ) {
+      processSale();
     }
-  }, [])
+  }, [saleData.status, isProcessing, hasProcessed]);
+
+  const processSale = async () => {
+    // Prevent multiple simultaneous requests with multiple guards
+    if (isProcessing || processingRef.current) {
+      console.log("Sale processing already in progress, skipping...");
+      return;
+    }
+
+    // Set all processing flags
+    setIsProcessing(true);
+    processingRef.current = true;
+    setRejectionReason("");
+
+    try {
+      // Calculate totals
+      const subtotal = saleData.products.reduce(
+        (sum, product) => sum + product.subtotal,
+        0
+      );
+      const impuestos = saleData.products.reduce(
+        (sum, product) => sum + product.tax,
+        0
+      );
+      const total = saleData.products.reduce(
+        (sum, product) => sum + product.total,
+        0
+      );
+
+      // Prepare sale data for API according to backend requirements
+      const products: SaleProductRequest[] = saleData.products.map(
+        (product) => {
+          // Use parseFloat for more robust conversion and ensure valid numbers
+          const quantity = parseFloat(String(product.quantity)) || 0;
+          const unitPrice = parseFloat(String(product.unitPrice)) || 0;
+          const tax = parseFloat(String(product.tax)) || 0;
+          
+          const productSubtotal = quantity * unitPrice;
+          const productTotal = productSubtotal + tax;
+
+          return {
+            productId: product.id,
+            quantity: quantity,
+            unitPrice: unitPrice,
+            tax: tax,
+            subtotal: productSubtotal,
+            total: productTotal,
+          };
+        }
+      );
+
+      // Generate sale number only once
+      let numero = saleNumberRef.current;
+      if (!numero) {
+        numero = `SALE-${Date.now()}-${Math.random()
+          .toString(36)
+          .substr(2, 9)
+          .toUpperCase()}`;
+        saleNumberRef.current = numero;
+      }
+
+      console.log("Processing sale with number:", numero);
+
+      const saleRequest: CreateSaleRequest = {
+        numero,
+        customerId: saleData.customer?.id,
+        customerData: {
+          name: saleData.customer?.name || "Consumidor Final",
+          email: saleData.customer?.email,
+          telefono: saleData.customer?.telefono,
+          direccion: saleData.customer?.direccion,
+          tipoDocumento: saleData.customer?.dui
+            ? "DUI"
+            : saleData.customer?.nit
+            ? "NIT"
+            : undefined,
+          numeroDocumento: saleData.customer?.dui || saleData.customer?.nit,
+          type: saleData.customer?.type || "default",
+        },
+        products,
+        subtotal: parseFloat(String(subtotal)) || 0,
+        impuestos: parseFloat(String(impuestos)) || 0,
+        total: parseFloat(String(total)) || 0,
+        paymentMethod: saleData.paymentMethod || "efectivo",
+        paymentDetails: saleData.paymentMethod === "efectivo" 
+          ? {
+              cashAmount: parseFloat(String(saleData.paymentDetails?.cashAmount)) || 0,
+              change: parseFloat(String(saleData.paymentDetails?.change)) || 0,
+            }
+          : {
+              posStatus: saleData.paymentDetails?.posStatus,
+            },
+        fecha: new Date().toISOString(),
+      };
+
+      // Call API to create sale
+      console.log("Sending sale request to API...");
+      const response = await createSale(saleRequest);
+      console.log(
+        "API response received:",
+        response.success ? "Success" : "Failed"
+      );
+
+      if (response.success) {
+        const dteNum =
+          response.data.dte ||
+          `DTE-${Date.now()}-${Math.random()
+            .toString(36)
+            .substr(2, 9)
+            .toUpperCase()}`;
+        const qrData =
+          response.data.qrCode ||
+          `https://ejemplo-dte.acme.com/consulta?codigo=${dteNum}&fecha=${
+            new Date().toISOString().split("T")[0]
+          }`;
+
+        setDteNumber(dteNum);
+        setQrCode(qrData);
+        setSaleId(response.data.id);
+        setSaleData({
+          ...saleData,
+          status: "efectuada",
+        });
+        console.log("Sale processed successfully");
+      } else {
+        throw new Error(response.message || "Error al procesar la venta");
+      }
+    } catch (error) {
+      console.error("Error processing sale:", error);
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "Error desconocido al procesar la venta";
+      setRejectionReason(errorMessage);
+      setSaleData({
+        ...saleData,
+        status: "rechazada",
+        rejectionReason: errorMessage,
+      });
+    } finally {
+      setIsProcessing(false);
+      processingRef.current = false;
+      console.log("Sale processing completed, flags reset");
+    }
+  };
 
   const handleRetry = () => {
-    setIsProcessing(true)
+    // Reset all processing states and allow retry
+    console.log("Retrying sale processing...");
+    setHasProcessed(false);
+    processingRef.current = false;
+    saleNumberRef.current = null; // Reset sale number for retry
     setSaleData({
       ...saleData,
       status: "pending",
       rejectionReason: undefined,
-    })
-
-    setTimeout(() => {
-      const isSuccessful = Math.random() > 0.1
-
-      if (isSuccessful) {
-        const dteNum = `DTE-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`
-        const qrData = `https://admin.factura.gob.sv/consultaPublica?ambiente=00&codGeneracion=${dteNum}&fechaEmi=${new Date().toISOString().split("T")[0]}`
-
-        setDteNumber(dteNum)
-        setQrCode(qrData)
-        setSaleData({
-          ...saleData,
-          status: "efectuada",
-        })
-      } else {
-        setSaleData({
-          ...saleData,
-          status: "rechazada",
-          rejectionReason: "Error en la validación de datos tributarios",
-        })
-      }
-
-      setIsProcessing(false)
-    }, 2000)
-  }
+    });
+    // The useEffect will trigger processSale again
+  };
 
   const handlePrint = () => {
     // Simulate printing
-    window.print()
-  }
+    window.print();
+  };
 
   const handleNewSale = () => {
     // Reset the entire sale data for a new transaction
+    console.log("Starting new sale...");
+    setHasProcessed(false);
+    processingRef.current = false;
+    saleNumberRef.current = null; // Reset sale number for new sale
     setSaleData({
       products: [],
       customer: null,
       paymentMethod: null,
       paymentDetails: null,
       status: "pending",
-    })
+    });
 
     // This would typically navigate back to step 1
-    window.location.reload()
-  }
+    window.location.reload();
+  };
 
-  const totalAmount = saleData.products.reduce((sum, product) => sum + product.total, 0)
+  const totalAmount = saleData.products.reduce(
+    (sum, product) => sum + product.total,
+    0
+  );
 
   return (
     <div className="space-y-6">
@@ -116,7 +244,9 @@ export function SaleStatus({ saleData, setSaleData }: SaleStatusProps) {
               <RefreshCw className="h-8 w-8 animate-spin text-primary" />
               <div className="text-center">
                 <h3 className="text-lg font-semibold">Procesando venta...</h3>
-                <p className="text-muted-foreground">Enviando información al Ministerio de Hacienda</p>
+                <p className="text-muted-foreground">
+                  Enviando información al sistema tributario...
+                </p>
               </div>
             </div>
           </CardContent>
@@ -125,7 +255,13 @@ export function SaleStatus({ saleData, setSaleData }: SaleStatusProps) {
 
       {/* Sale Result */}
       {!isProcessing && (
-        <Card className={saleData.status === "efectuada" ? "border-secondary" : "border-destructive"}>
+        <Card
+          className={
+            saleData.status === "efectuada"
+              ? "border-secondary"
+              : "border-destructive"
+          }
+        >
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               {saleData.status === "efectuada" ? (
@@ -146,8 +282,12 @@ export function SaleStatus({ saleData, setSaleData }: SaleStatusProps) {
               <div className="flex items-center gap-2">
                 <Label>Estado:</Label>
                 <Badge
-                  variant={saleData.status === "efectuada" ? "default" : "destructive"}
-                  className={saleData.status === "efectuada" ? "bg-secondary" : ""}
+                  variant={
+                    saleData.status === "efectuada" ? "default" : "destructive"
+                  }
+                  className={
+                    saleData.status === "efectuada" ? "bg-secondary" : ""
+                  }
                 >
                   {saleData.status === "efectuada" ? "Efectuada" : "Rechazada"}
                 </Badge>
@@ -159,7 +299,14 @@ export function SaleStatus({ saleData, setSaleData }: SaleStatusProps) {
                   <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-md">
                     <div className="flex items-start gap-2">
                       <AlertCircle className="h-5 w-5 text-destructive mt-0.5" />
-                      <p className="text-sm">{saleData.rejectionReason}</p>
+                      <div className="text-sm">
+                        <p className="font-medium mb-1">
+                          Error en la solicitud:
+                        </p>
+                        <p className="whitespace-pre-wrap">
+                          {saleData.rejectionReason}
+                        </p>
+                      </div>
                     </div>
                   </div>
                   <Button
@@ -179,11 +326,15 @@ export function SaleStatus({ saleData, setSaleData }: SaleStatusProps) {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <Label>Número DTE:</Label>
-                      <p className="font-mono text-sm bg-muted p-2 rounded">{dteNumber}</p>
+                      <p className="font-mono text-sm bg-muted p-2 rounded">
+                        {dteNumber}
+                      </p>
                     </div>
                     <div>
                       <Label>Monto total:</Label>
-                      <p className="text-lg font-bold text-primary">${totalAmount.toFixed(2)}</p>
+                      <p className="text-lg font-bold text-primary">
+                        ${totalAmount.toFixed(2)}
+                      </p>
                     </div>
                   </div>
 
@@ -194,7 +345,11 @@ export function SaleStatus({ saleData, setSaleData }: SaleStatusProps) {
 
                   <div>
                     <Label>Método de pago:</Label>
-                    <Badge variant="outline">{saleData.paymentMethod === "efectivo" ? "Efectivo" : "Tarjeta"}</Badge>
+                    <Badge variant="outline">
+                      {saleData.paymentMethod === "efectivo"
+                        ? "Efectivo"
+                        : "Tarjeta"}
+                    </Badge>
                   </div>
                 </div>
               )}
@@ -215,18 +370,27 @@ export function SaleStatus({ saleData, setSaleData }: SaleStatusProps) {
           <CardContent>
             <div className="text-center space-y-4">
               <div className="flex justify-center">
-                <div className="p-4 bg-white border-2 border-gray-300 rounded-lg">
+                <div 
+                  className="p-4 bg-white border-2 border-gray-300 rounded-lg cursor-pointer hover:border-primary transition-colors"
+                  onClick={() => saleId && window.open(`/dte/${saleId}`, '_blank')}
+                  title="Haz clic para ver el DTE completo"
+                >
                   <img
-                    src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrCode)}`}
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(
+                      qrCode
+                    )}`}
                     alt="QR Code DTE"
                     className="w-48 h-48"
                   />
                 </div>
               </div>
               <p className="text-sm text-muted-foreground max-w-md mx-auto">
-                Escanea el QR para acceder al documento en el Ministerio de Hacienda
+                Escanea el QR para acceder al documento tributario electrónico, 
+                o haz clic en el QR para ver el DTE completo
               </p>
-              <div className="text-xs text-muted-foreground bg-muted p-2 rounded font-mono break-all">{qrCode}</div>
+              <div className="text-xs text-muted-foreground bg-muted p-2 rounded font-mono break-all">
+                {qrCode}
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -240,7 +404,10 @@ export function SaleStatus({ saleData, setSaleData }: SaleStatusProps) {
           </CardHeader>
           <CardContent>
             <div className="flex flex-col sm:flex-row gap-4">
-              <Button onClick={handlePrint} className="bg-primary hover:bg-primary/90">
+              <Button
+                onClick={handlePrint}
+                className="bg-primary hover:bg-primary/90"
+              >
                 <Printer className="h-4 w-4 mr-2" />
                 Imprimir comprobante
               </Button>
@@ -261,21 +428,35 @@ export function SaleStatus({ saleData, setSaleData }: SaleStatusProps) {
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
               <div>
-                <Label className="text-muted-foreground">Productos vendidos:</Label>
-                <p className="font-semibold">{saleData.products.length} artículos</p>
+                <Label className="text-muted-foreground">
+                  Productos vendidos:
+                </Label>
+                <p className="font-semibold">
+                  {saleData.products.length} artículos
+                </p>
               </div>
               <div>
                 <Label className="text-muted-foreground">Cantidad total:</Label>
-                <p className="font-semibold">{saleData.products.reduce((sum, p) => sum + p.quantity, 0)} unidades</p>
+                <p className="font-semibold">
+                  {saleData.products.reduce((sum, p) => sum + p.quantity, 0)}{" "}
+                  unidades
+                </p>
               </div>
               <div>
-                <Label className="text-muted-foreground">Impuestos cobrados:</Label>
-                <p className="font-semibold">${saleData.products.reduce((sum, p) => sum + p.tax, 0).toFixed(2)}</p>
+                <Label className="text-muted-foreground">
+                  Impuestos cobrados:
+                </Label>
+                <p className="font-semibold">
+                  $
+                  {saleData.products
+                    .reduce((sum, p) => sum + p.tax, 0)
+                    .toFixed(2)}
+                </p>
               </div>
             </div>
           </CardContent>
         </Card>
       )}
     </div>
-  )
+  );
 }

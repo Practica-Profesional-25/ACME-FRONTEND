@@ -235,6 +235,30 @@ export function ProductSelection({
 
   const addProduct = (apiProduct: ApiProduct) => {
     const quantity = selectedQuantities[apiProduct.id] || 1;
+    
+    // Validar stock disponible
+    if (quantity > apiProduct.stock) {
+      toast({
+        title: "Stock insuficiente",
+        description: `Solo hay ${apiProduct.stock} unidades disponibles de ${apiProduct.nombre}`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Verificar si ya existe el producto y calcular cantidad total
+    const existingProduct = saleData.products.find((p) => p.id === apiProduct.id);
+    const totalQuantityAfterAdd = existingProduct ? existingProduct.quantity + quantity : quantity;
+    
+    if (totalQuantityAfterAdd > apiProduct.stock) {
+      toast({
+        title: "Stock insuficiente",
+        description: `No se puede agregar ${quantity} unidades. Ya tienes ${existingProduct?.quantity || 0} en el carrito. Stock disponible: ${apiProduct.stock}`,
+        variant: "destructive",
+      });
+      return;
+    }
+
     const saleProduct = apiProductToSaleProduct(apiProduct, quantity);
 
     // Convertir SaleProduct a Product para el wizard
@@ -247,8 +271,6 @@ export function ProductSelection({
       tax: saleProduct.tax,
       total: saleProduct.total,
     };
-
-    const existingProduct = saleData.products.find((p) => p.id === product.id);
 
     if (existingProduct) {
       // Si ya existe, incrementar cantidad
@@ -292,6 +314,17 @@ export function ProductSelection({
   const updateQuantity = (productId: string, newQuantity: number) => {
     if (newQuantity <= 0) {
       removeProduct(productId);
+      return;
+    }
+
+    // Encontrar el producto en los resultados de búsqueda para obtener el stock
+    const apiProduct = searchResults.find(p => p.id === productId);
+    if (apiProduct && newQuantity > apiProduct.stock) {
+      toast({
+        title: "Stock insuficiente",
+        description: `Solo hay ${apiProduct.stock} unidades disponibles de ${apiProduct.nombre}`,
+        variant: "destructive",
+      });
       return;
     }
 
@@ -487,13 +520,23 @@ export function ProductSelection({
                             min="1"
                             max={product.stock}
                             value={selectedQuantities[product.id] || 1}
-                            onChange={(e) =>
+                            onChange={(e) => {
+                              const value = Number.parseInt(e.target.value) || 1;
+                              const maxValue = Math.min(value, product.stock);
                               setSelectedQuantities({
                                 ...selectedQuantities,
-                                [product.id]:
-                                  Number.parseInt(e.target.value) || 1,
-                              })
-                            }
+                                [product.id]: maxValue,
+                              });
+                              
+                              // Mostrar advertencia si se intenta exceder el stock
+                              if (value > product.stock) {
+                                toast({
+                                  title: "Cantidad ajustada",
+                                  description: `La cantidad se ajustó a ${product.stock} (stock disponible)`,
+                                  variant: "default",
+                                });
+                              }
+                            }}
                             className="w-20"
                           />
                         </div>
@@ -576,12 +619,10 @@ export function ProductSelection({
                             type="number"
                             min="1"
                             value={product.quantity}
-                            onChange={(e) =>
-                              updateQuantity(
-                                product.id,
-                                Number.parseInt(e.target.value) || 1
-                              )
-                            }
+                            onChange={(e) => {
+                              const newQuantity = Number.parseInt(e.target.value) || 1;
+                              updateQuantity(product.id, newQuantity);
+                            }}
                             className="h-8 w-16 text-sm"
                           />
                           <span className="text-xs text-muted-foreground">
