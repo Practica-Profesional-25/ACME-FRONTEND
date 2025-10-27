@@ -112,54 +112,10 @@ export function SalesMain({ onStartSale }: SalesMainProps) {
     // No necesitamos hacer nada aquí ya que el dialog maneja la carga de datos
   };
 
-  // Función para generar/descargar DTE
+  // Función para navegar a la página DTE
   const handleDTE = (sale: ApiSale) => {
-    // Generar URL del QR para el DTE
-    const qrData = `https://admin.factura.gob.sv/consultaPublica?ambiente=00&codGeneracion=DTE-${sale.id}&fechaEmi=${sale.fecha}`;
-
-    // Abrir en nueva ventana o descargar
-    const newWindow = window.open("", "_blank");
-    if (newWindow) {
-      newWindow.document.write(`
-        <html>
-          <head>
-            <title>DTE - ${sale.numero}</title>
-            <style>
-              body { font-family: Arial, sans-serif; padding: 20px; text-align: center; }
-              .header { margin-bottom: 30px; }
-              .qr-container { margin: 20px 0; }
-              .details { text-align: left; max-width: 400px; margin: 0 auto; }
-              .details div { margin: 10px 0; }
-            </style>
-          </head>
-          <body>
-            <div class="header">
-              <h1>Documento Tributario Electrónico</h1>
-              <h2>Venta ${sale.numero}</h2>
-            </div>
-            <div class="details">
-              <div><strong>Cliente:</strong> ${sale.cliente}</div>
-              <div><strong>Total:</strong> $${sale.total.toFixed(2)}</div>
-              <div><strong>Fecha:</strong> ${sale.fecha}</div>
-              <div><strong>Estado:</strong> ${sale.estado}</div>
-            </div>
-            <div class="qr-container">
-              <p>Código QR para verificación:</p>
-              <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(
-                qrData
-              )}" alt="QR Code DTE" />
-              <p style="font-size: 12px; color: #666; word-break: break-all;">${qrData}</p>
-            </div>
-            <button onclick="window.print()" style="padding: 10px 20px; margin: 20px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">Imprimir</button>
-          </body>
-        </html>
-      `);
-      newWindow.document.close();
-    } else {
-      alert(
-        "No se pudo abrir la ventana del DTE. Por favor, permite las ventanas emergentes."
-      );
-    }
+    // Navegar a la página DTE usando el ID de la venta
+    window.open(`/dte/${sale.id}`, '_blank');
   };
 
   return (
