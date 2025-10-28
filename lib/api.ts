@@ -24,7 +24,8 @@ const API_BASE_URL =
 
 // Función para obtener productos con filtros opcionales
 export async function getProducts(
-  filters: ProductFilters = {}
+  filters: ProductFilters = {},
+  token: string
 ): Promise<ProductsApiResponse> {
   try {
     const searchParams = new URLSearchParams();
@@ -42,11 +43,11 @@ export async function getProducts(
     const url = `${API_BASE_URL}/products${
       searchParams.toString() ? `?${searchParams.toString()}` : ""
     }`;
-
     const response = await fetch(url, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
       },
     });
 
@@ -193,7 +194,7 @@ export async function getProductById(id: string) {
 }
 
 // Función para buscar productos con debounce (útil para búsquedas en tiempo real)
-export function createProductSearch() {
+export function createProductSearch(token: string) {
   let timeoutId: NodeJS.Timeout | null = null;
 
   return function searchProducts(
@@ -207,7 +208,7 @@ export function createProductSearch() {
 
     timeoutId = setTimeout(async () => {
       try {
-        const data = await getProducts(filters);
+        const data = await getProducts(filters, token);
         callback(data, null);
       } catch (error) {
         callback(null, error as Error);
@@ -218,13 +219,15 @@ export function createProductSearch() {
 
 // Función para crear un nuevo producto
 export async function createProduct(
-  productData: CreateProductRequest
+  productData: CreateProductRequest,
+  token: string
 ): Promise<ProductApiResponse> {
   try {
     const response = await fetch(`${API_BASE_URL}/products`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify(productData),
     });
@@ -249,13 +252,15 @@ export async function createProduct(
 // Función para actualizar un producto existente
 export async function updateProduct(
   id: string,
-  productData: UpdateProductRequest
+  productData: UpdateProductRequest,
+  token: string
 ): Promise<ProductApiResponse> {
   try {
     const response = await fetch(`${API_BASE_URL}/products/${id}`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify(productData),
     });
@@ -518,7 +523,9 @@ export async function createSale(
         const errorData = await response.json();
         if (errorData.message) {
           if (Array.isArray(errorData.message)) {
-            errorMessage = `Error ${response.status}: ${errorData.message.join(', ')}`;
+            errorMessage = `Error ${response.status}: ${errorData.message.join(
+              ", "
+            )}`;
           } else {
             errorMessage = `Error ${response.status}: ${errorData.message}`;
           }

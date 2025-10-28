@@ -33,11 +33,6 @@ export function SaleStatus({ saleData, setSaleData }: SaleStatusProps) {
   const saleNumberRef = useRef<string | null>(null);
 
   useEffect(() => {
-    // Process sale when component mounts, but only once and if not already processing
-    console.log("Sale status:", saleData.status);
-    console.log("Is processing:", isProcessing);
-    console.log("Has processed:", hasProcessed);
-    console.log("Processing ref:", processingRef.current);
     if (
       saleData.status === "pending" &&
       !isProcessing &&
@@ -51,7 +46,6 @@ export function SaleStatus({ saleData, setSaleData }: SaleStatusProps) {
   const processSale = async () => {
     // Prevent multiple simultaneous requests with multiple guards
     if (isProcessing || processingRef.current) {
-      console.log("Sale processing already in progress, skipping...");
       return;
     }
 
@@ -109,8 +103,6 @@ export function SaleStatus({ saleData, setSaleData }: SaleStatusProps) {
         saleNumberRef.current = numero;
       }
 
-      console.log("Processing sale with number:", numero);
-
       const saleRequest: CreateSaleRequest = {
         numero,
         customerId: saleData.customer?.id,
@@ -155,12 +147,7 @@ export function SaleStatus({ saleData, setSaleData }: SaleStatusProps) {
       };
 
       // Call API to create sale
-      console.log("Sending sale request to API...");
       const response = await createSale(saleRequest);
-      console.log(
-        "API response received:",
-        response.success ? "Success" : "Failed"
-      );
 
       if (response.success) {
         const dteNum =
@@ -182,7 +169,6 @@ export function SaleStatus({ saleData, setSaleData }: SaleStatusProps) {
           ...saleData,
           status: "efectuada",
         });
-        console.log("Sale processed successfully");
       } else {
         throw new Error(response.message || "Error al procesar la venta");
       }
@@ -201,13 +187,11 @@ export function SaleStatus({ saleData, setSaleData }: SaleStatusProps) {
     } finally {
       setIsProcessing(false);
       processingRef.current = false;
-      console.log("Sale processing completed, flags reset");
     }
   };
 
   const handleRetry = () => {
     // Reset all processing states and allow retry
-    console.log("Retrying sale processing...");
     setHasProcessed(false);
     processingRef.current = false;
     saleNumberRef.current = null; // Reset sale number for retry
@@ -226,7 +210,6 @@ export function SaleStatus({ saleData, setSaleData }: SaleStatusProps) {
 
   const handleNewSale = () => {
     // Reset the entire sale data for a new transaction
-    console.log("Starting new sale...");
     setHasProcessed(false);
     processingRef.current = false;
     saleNumberRef.current = null; // Reset sale number for new sale

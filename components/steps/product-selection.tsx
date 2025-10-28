@@ -19,6 +19,7 @@ import { useToast } from "@/hooks/use-toast";
 import { getProducts } from "@/lib/api";
 import type { ApiProduct } from "@/lib/types";
 import { apiProductToSaleProduct } from "@/lib/types";
+import { useToken } from "@/contexts/AccessTokenContext";
 
 const mockProducts = [
   // Bikes - Road
@@ -197,6 +198,7 @@ export function ProductSelection({
   >({});
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
+  const token = useToken();
 
   // Cargar productos iniciales
   useEffect(() => {
@@ -206,6 +208,17 @@ export function ProductSelection({
   const handleSearch = async () => {
     try {
       setLoading(true);
+      
+      // Verificar que tenemos un token válido
+      if (!token) {
+        toast({
+          title: "Error de autenticación",
+          description: "No se pudo obtener el token de acceso.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       const filters = {
         ...(searchForm.nombre && { nombre: searchForm.nombre }),
         ...(searchForm.identificador && {
@@ -218,7 +231,7 @@ export function ProductSelection({
         limit: 50,
       };
 
-      const response = await getProducts(filters);
+      const response = await getProducts(filters, token);
       setSearchResults(response.data);
     } catch (error) {
       console.error("Error loading products:", error);

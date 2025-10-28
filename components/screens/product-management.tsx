@@ -31,187 +31,8 @@ import { Plus, Search, Edit, Trash2, Package, Loader2 } from "lucide-react";
 import { getProducts, createProduct, updateProduct } from "@/lib/api";
 import type { ApiProduct, ProductFilters, CreateProductRequest, UpdateProductRequest } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
+import { useToken } from "@/contexts/AccessTokenContext";
 
-const mockProducts = [
-  // Bikes - Road
-  {
-    id: "B001",
-    identificador: "TREK-DOMANE-SL5-2024",
-    nombre: "Trek Domane SL 5 2024",
-    categoria: "Bikes",
-    subcategoria: "Road",
-    precio: 2899.99,
-    stock: 3,
-  },
-  {
-    id: "B002",
-    identificador: "SPECIALIZED-TARMAC-SL7-2024",
-    nombre: "Specialized Tarmac SL7 Expert 2024",
-    categoria: "Bikes",
-    subcategoria: "Road",
-    precio: 4299.99,
-    stock: 2,
-  },
-  {
-    id: "B003",
-    identificador: "GIANT-CONTEND-AR-2024",
-    nombre: "Giant Contend AR 3 2024",
-    categoria: "Bikes",
-    subcategoria: "Road",
-    precio: 1199.99,
-    stock: 5,
-  },
-  // Bikes - Mountain
-  {
-    id: "B004",
-    identificador: "TREK-FUEL-EX-2024",
-    nombre: "Trek Fuel EX 8 2024",
-    categoria: "Bikes",
-    subcategoria: "Mountain",
-    precio: 3499.99,
-    stock: 4,
-  },
-  {
-    id: "B005",
-    identificador: "SPECIALIZED-STUMPJUMPER-2024",
-    nombre: "Specialized Stumpjumper Comp 2024",
-    categoria: "Bikes",
-    subcategoria: "Mountain",
-    precio: 3899.99,
-    stock: 2,
-  },
-  // Bikes - Hybrid
-  {
-    id: "B006",
-    identificador: "TREK-FX3-DISC-2024",
-    nombre: "Trek FX 3 Disc 2024",
-    categoria: "Bikes",
-    subcategoria: "Hybrid",
-    precio: 899.99,
-    stock: 8,
-  },
-  {
-    id: "B007",
-    identificador: "GIANT-ESCAPE-3-2024",
-    nombre: "Giant Escape 3 2024",
-    categoria: "Bikes",
-    subcategoria: "Hybrid",
-    precio: 549.99,
-    stock: 6,
-  },
-  // Bikes - Electric
-  {
-    id: "B008",
-    identificador: "TREK-VERVE-PLUS-2024",
-    nombre: "Trek Verve+ 2 Lowstep 2024",
-    categoria: "Bikes",
-    subcategoria: "Electric",
-    precio: 2799.99,
-    stock: 3,
-  },
-  // Clothing - Road
-  {
-    id: "C001",
-    identificador: "GIRO-SYNTAX-MIPS-2024",
-    nombre: "Casco Giro Syntax MIPS",
-    categoria: "Clothing",
-    subcategoria: "Road",
-    precio: 149.99,
-    stock: 15,
-  },
-  {
-    id: "C002",
-    identificador: "SPECIALIZED-ALIGN-II-2024",
-    nombre: "Casco Specialized Align II",
-    categoria: "Clothing",
-    subcategoria: "Road",
-    precio: 49.99,
-    stock: 20,
-  },
-  {
-    id: "C003",
-    identificador: "BELL-SUPER-DH-MIPS-2024",
-    nombre: "Casco Bell Super DH MIPS",
-    categoria: "Clothing",
-    subcategoria: "Mountain",
-    precio: 299.99,
-    stock: 8,
-  },
-  // Clothing - Road
-  {
-    id: "G001",
-    identificador: "PEARL-IZUMI-ELITE-GEL",
-    nombre: "Guantes Pearl Izumi Elite Gel",
-    categoria: "Clothing",
-    subcategoria: "Road",
-    precio: 39.99,
-    stock: 25,
-  },
-  {
-    id: "G002",
-    identificador: "SPECIALIZED-BG-GRAIL-2024",
-    nombre: "Guantes Specialized BG Grail",
-    categoria: "Clothing",
-    subcategoria: "Road",
-    precio: 34.99,
-    stock: 18,
-  },
-  {
-    id: "G003",
-    identificador: "FOX-RANGER-MTB-2024",
-    nombre: "Guantes Fox Ranger MTB",
-    categoria: "Clothing",
-    subcategoria: "Mountain",
-    precio: 29.99,
-    stock: 22,
-  },
-  // Accessories
-  {
-    id: "A001",
-    identificador: "WAHOO-ELEMNT-BOLT-V2",
-    nombre: "Ciclocomputador Wahoo ELEMNT BOLT V2",
-    categoria: "Accessories",
-    subcategoria: "Electronics",
-    precio: 279.99,
-    stock: 10,
-  },
-  {
-    id: "A002",
-    identificador: "LEZYNE-MEGA-XL-GPS",
-    nombre: "Ciclocomputador Lezyne Mega XL GPS",
-    categoria: "Accessories",
-    subcategoria: "Electronics",
-    precio: 199.99,
-    stock: 12,
-  },
-  {
-    id: "A003",
-    identificador: "PARK-TOOL-PCS-10-2",
-    nombre: "Soporte Park Tool PCS-10.2",
-    categoria: "Accessories",
-    subcategoria: "Tools",
-    precio: 189.99,
-    stock: 5,
-  },
-  {
-    id: "A004",
-    identificador: "KRYPTONITE-EVOLUTION-4",
-    nombre: "Candado Kryptonite Evolution Series 4",
-    categoria: "Accessories",
-    subcategoria: "Locks",
-    precio: 89.99,
-    stock: 15,
-  },
-  {
-    id: "A005",
-    identificador: "LEZYNE-MACRO-DRIVE-1400XL",
-    nombre: "Luz Lezyne Macro Drive 1400XL",
-    categoria: "Accessories",
-    subcategoria: "Lighting",
-    precio: 149.99,
-    stock: 8,
-  },
-];
 
 const categories = [
   "Bikes",
@@ -243,19 +64,33 @@ export function ProductManagement() {
     stock: "",
   });
   const { toast } = useToast();
+  const token = useToken();
 
   // Cargar productos al montar el componente
   useEffect(() => {
-    loadProducts();
-  }, []);
+    if (token) {
+      loadProducts()
+    }
+  }, [token])
 
   const loadProducts = async (filters: ProductFilters = {}) => {
     try {
       setLoading(true);
+      
+      // Verificar que tenemos un token válido
+      if (!token) {
+        toast({
+          title: "Error de autenticación",
+          description: "No se pudo obtener el token de acceso.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       const response = await getProducts({
         ...filters,
         limit: 100, // Cargar más productos para la gestión
-      });
+      }, token);
       setProducts(response.data);
     } catch (error) {
       console.error("Error loading products:", error);
@@ -321,6 +156,16 @@ export function ProductManagement() {
     try {
       setSaving(true);
       
+      // Verificar que tenemos un token válido
+      if (!token) {
+        toast({
+          title: "Error de autenticación",
+          description: "No se pudo obtener el token de acceso.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
       // Validar campos requeridos
       if (!formData.identificador || !formData.nombre || !formData.categoria || 
           !formData.subcategoria || !formData.precio || !formData.stock) {
@@ -365,7 +210,7 @@ export function ProductManagement() {
           stock: stock,
         };
 
-        await updateProduct(editingProduct.id, updateData);
+        await updateProduct(editingProduct.id, updateData, token);
         
         toast({
           title: "Éxito",
@@ -382,7 +227,7 @@ export function ProductManagement() {
           stock: stock,
         };
 
-        await createProduct(createData);
+        await createProduct(createData, token);
         
         toast({
           title: "Éxito",
