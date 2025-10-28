@@ -14,6 +14,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { createSale } from "@/lib/api";
+import { useAuth } from "@/contexts/AccessTokenContext";
 import type { SaleData } from "../sales-wizard";
 import type { CreateSaleRequest, SaleProductRequest } from "@/lib/types";
 
@@ -31,6 +32,7 @@ export function SaleStatus({ saleData, setSaleData }: SaleStatusProps) {
   const [hasProcessed, setHasProcessed] = useState(false);
   const processingRef = useRef(false);
   const saleNumberRef = useRef<string | null>(null);
+  const auth = useAuth();
 
   useEffect(() => {
     if (
@@ -147,7 +149,7 @@ export function SaleStatus({ saleData, setSaleData }: SaleStatusProps) {
       };
 
       // Call API to create sale
-      const response = await createSale(saleRequest);
+      const response = await createSale(saleRequest, auth.token!);
 
       if (response.success) {
         const dteNum =

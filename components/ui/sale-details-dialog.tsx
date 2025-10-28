@@ -40,6 +40,8 @@ interface SaleDetailsDialogProps {
   children?: React.ReactNode;
 }
 
+import { useAuth } from "@/contexts/AccessTokenContext";
+
 export function SaleDetailsDialog({
   saleId,
   children,
@@ -50,13 +52,14 @@ export function SaleDetailsDialog({
   const [error, setError] = useState<string | null>(null);
   const [processingDTE, setProcessingDTE] = useState(false);
   const [resendingInvoice, setResendingInvoice] = useState(false);
+  const auth = useAuth();
 
   const handleProcessDTE = async () => {
     if (!saleDetails?.id) return;
 
     setProcessingDTE(true);
     try {
-      const response = await processSale(saleDetails.id);
+      const response = await processSale(saleDetails.id, auth.token!);
       if (response.success) {
         // Mostrar mensaje de éxito
         alert(
@@ -64,7 +67,7 @@ export function SaleDetailsDialog({
             "Venta procesada exitosamente con el Ministerio de Hacienda"
         );
         // Recargar los detalles de la venta para obtener la información actualizada
-        const updatedResponse = await getSaleById(saleDetails.id);
+        const updatedResponse = await getSaleById(saleDetails.id, auth.token!);
         if (updatedResponse.success) {
           setSaleDetails(updatedResponse.data);
         }
@@ -84,7 +87,7 @@ export function SaleDetailsDialog({
 
     setResendingInvoice(true);
     try {
-      const response = await resendInvoice(saleDetails.id);
+      const response = await resendInvoice(saleDetails.id, auth.token!);
       if (response.success) {
         alert(response.message || "Factura y DTE reenviados exitosamente");
       } else {
@@ -104,7 +107,7 @@ export function SaleDetailsDialog({
       setLoading(true);
       setError(null);
       try {
-        const response = await getSaleById(saleId);
+        const response = await getSaleById(saleId, auth.token!);
         if (response.success) {
           setSaleDetails(response.data);
         } else {

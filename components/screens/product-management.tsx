@@ -47,6 +47,8 @@ const subcategories = {
   Accessories: ["Electronics", "Tools", "Lighting", "Locks"],
 };
 
+import { useAuth } from "@/contexts/AccessTokenContext";
+
 export function ProductManagement() {
   const [products, setProducts] = useState<ApiProduct[]>([]);
   const [loading, setLoading] = useState(true);
@@ -65,6 +67,7 @@ export function ProductManagement() {
   });
   const { toast } = useToast();
   const token = useToken();
+  const auth = useAuth();
 
   // Cargar productos al montar el componente
   useEffect(() => {
