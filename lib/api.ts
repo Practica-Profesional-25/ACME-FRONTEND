@@ -18,6 +18,7 @@ import type {
   CreateSaleRequest,
   CreateSaleResponse,
 } from "./types";
+import { apiRequest } from "./api-interceptor";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL || "https://acme.infoking.win/api";
@@ -43,17 +44,13 @@ export async function getProducts(
     const url = `${API_BASE_URL}/products${
       searchParams.toString() ? `?${searchParams.toString()}` : ""
     }`;
-    const response = await fetch(url, {
+    const response = await apiRequest(url, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
     });
-
-    if (!response.ok) {
-      throw new Error(`Error ${response.status}: ${response.statusText}`);
-    }
 
     const data: ProductsApiResponse = await response.json();
 
@@ -91,16 +88,12 @@ export async function getSales(
       searchParams.toString() ? `?${searchParams.toString()}` : ""
     }`;
 
-    const response = await fetch(url, {
+    const response = await apiRequest(url, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
       },
     });
-
-    if (!response.ok) {
-      throw new Error(`Error ${response.status}: ${response.statusText}`);
-    }
 
     const data: SalesApiResponse = await response.json();
 
@@ -118,16 +111,12 @@ export async function getSales(
 // Función para obtener una venta específica por ID
 export async function getSaleById(id: string): Promise<SaleApiResponse> {
   try {
-    const response = await fetch(`${API_BASE_URL}/sales/${id}`, {
+    const response = await apiRequest(`${API_BASE_URL}/sales/${id}`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
       },
     });
-
-    if (!response.ok) {
-      throw new Error(`Error ${response.status}: ${response.statusText}`);
-    }
 
     const data: SaleApiResponse = await response.json();
 
@@ -169,16 +158,12 @@ export function createSaleSearch() {
 // Función para obtener un producto específico por ID
 export async function getProductById(id: string) {
   try {
-    const response = await fetch(`${API_BASE_URL}/products/${id}`, {
+    const response = await apiRequest(`${API_BASE_URL}/products/${id}`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
       },
     });
-
-    if (!response.ok) {
-      throw new Error(`Error ${response.status}: ${response.statusText}`);
-    }
 
     const data = await response.json();
 
@@ -223,7 +208,7 @@ export async function createProduct(
   token: string
 ): Promise<ProductApiResponse> {
   try {
-    const response = await fetch(`${API_BASE_URL}/products`, {
+    const response = await apiRequest(`${API_BASE_URL}/products`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -231,10 +216,6 @@ export async function createProduct(
       },
       body: JSON.stringify(productData),
     });
-
-    if (!response.ok) {
-      throw new Error(`Error ${response.status}: ${response.statusText}`);
-    }
 
     const data: ProductApiResponse = await response.json();
 
@@ -256,7 +237,7 @@ export async function updateProduct(
   token: string
 ): Promise<ProductApiResponse> {
   try {
-    const response = await fetch(`${API_BASE_URL}/products/${id}`, {
+    const response = await apiRequest(`${API_BASE_URL}/products/${id}`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
@@ -264,10 +245,6 @@ export async function updateProduct(
       },
       body: JSON.stringify(productData),
     });
-
-    if (!response.ok) {
-      throw new Error(`Error ${response.status}: ${response.statusText}`);
-    }
 
     const data: ProductApiResponse = await response.json();
 
@@ -304,18 +281,18 @@ export async function getCustomers(
       searchParams.toString() ? `?${searchParams.toString()}` : ""
     }`;
 
-    const response = await fetch(url, {
+    const response = await apiRequest(url, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
       },
     });
 
-    if (!response.ok) {
-      throw new Error(`Error ${response.status}: ${response.statusText}`);
-    }
-
     const data: CustomersApiResponse = await response.json();
+
+    if (!data.success) {
+      throw new Error(data.message || "Error al obtener clientes");
+    }
 
     return data;
   } catch (error) {
@@ -329,16 +306,12 @@ export async function getCustomerById(
   id: string
 ): Promise<CustomerApiResponse> {
   try {
-    const response = await fetch(`${API_BASE_URL}/customers/${id}`, {
+    const response = await apiRequest(`${API_BASE_URL}/customers/${id}`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
       },
     });
-
-    if (!response.ok) {
-      throw new Error(`Error ${response.status}: ${response.statusText}`);
-    }
 
     const data: CustomerApiResponse = await response.json();
 
@@ -387,18 +360,14 @@ export async function searchCustomers(
     searchParams.append("q", searchTerm);
     if (limit) searchParams.append("limit", limit.toString());
 
-    const response = await fetch(`${API_BASE_URL}/customers/search?${searchParams.toString()}`, {
+    const response = await apiRequest(`${API_BASE_URL}/customers/search?${searchParams.toString()}`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
       },
     });
 
-    if (!response.ok) {
-      throw new Error(`Error ${response.status}: ${response.statusText}`);
-    }
-
-    const data: CustomersApiResponse = await response.json();
+    const data = await response.json();
 
     if (!data.success) {
       throw new Error(data.message || "Error al buscar clientes");
@@ -418,16 +387,12 @@ export async function getCustomerStatsByDepartment(): Promise<{
   data: Array<{ departamento: string; count: number }>;
 }> {
   try {
-    const response = await fetch(`${API_BASE_URL}/customers/stats/departamento`, {
+    const response = await apiRequest(`${API_BASE_URL}/customers/stats/departamento`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
       },
     });
-
-    if (!response.ok) {
-      throw new Error(`Error ${response.status}: ${response.statusText}`);
-    }
 
     const data = await response.json();
 
@@ -449,16 +414,12 @@ export async function getCustomerStatsByType(): Promise<{
   data: Array<{ tipo: string; count: number }>;
 }> {
   try {
-    const response = await fetch(`${API_BASE_URL}/customers/stats/tipo`, {
+    const response = await apiRequest(`${API_BASE_URL}/customers/stats/tipo`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
       },
     });
-
-    if (!response.ok) {
-      throw new Error(`Error ${response.status}: ${response.statusText}`);
-    }
 
     const data = await response.json();
 
@@ -478,17 +439,13 @@ export async function createCustomer(
   customerData: CreateCustomerRequest
 ): Promise<CustomerApiResponse> {
   try {
-    const response = await fetch(`${API_BASE_URL}/customers`, {
+    const response = await apiRequest(`${API_BASE_URL}/customers`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify(customerData),
     });
-
-    if (!response.ok) {
-      throw new Error(`Error ${response.status}: ${response.statusText}`);
-    }
 
     const data: CustomerApiResponse = await response.json();
 
@@ -508,34 +465,13 @@ export async function createSale(
   saleData: CreateSaleRequest
 ): Promise<CreateSaleResponse> {
   try {
-    const response = await fetch(`${API_BASE_URL}/sales`, {
+    const response = await apiRequest(`${API_BASE_URL}/sales`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify(saleData),
     });
-
-    if (!response.ok) {
-      // Try to get detailed error message from response body
-      let errorMessage = `Error ${response.status}: ${response.statusText}`;
-      try {
-        const errorData = await response.json();
-        if (errorData.message) {
-          if (Array.isArray(errorData.message)) {
-            errorMessage = `Error ${response.status}: ${errorData.message.join(
-              ", "
-            )}`;
-          } else {
-            errorMessage = `Error ${response.status}: ${errorData.message}`;
-          }
-        }
-      } catch (parseError) {
-        // If we can't parse the error response, use the default message
-        console.warn("Could not parse error response:", parseError);
-      }
-      throw new Error(errorMessage);
-    }
 
     const data: CreateSaleResponse = await response.json();
 
@@ -556,32 +492,13 @@ export async function updateCustomer(
   customerData: UpdateCustomerRequest
 ): Promise<CustomerApiResponse> {
   try {
-    const response = await fetch(`${API_BASE_URL}/customers/${id}`, {
+    const response = await apiRequest(`${API_BASE_URL}/customers/${id}`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify(customerData),
     });
-
-    if (!response.ok) {
-      // Try to get detailed error message from response body
-      let errorMessage = `Error ${response.status}: ${response.statusText}`;
-      try {
-        const errorData = await response.json();
-        if (errorData.message) {
-          if (Array.isArray(errorData.message)) {
-            errorMessage = `Error ${response.status}: ${errorData.message.join(', ')}`;
-          } else {
-            errorMessage = `Error ${response.status}: ${errorData.message}`;
-          }
-        }
-      } catch (parseError) {
-        // If we can't parse the error response, use the default message
-        console.warn("Could not parse error response:", parseError);
-      }
-      throw new Error(errorMessage);
-    }
 
     const data: CustomerApiResponse = await response.json();
 
@@ -602,31 +519,12 @@ export async function deleteCustomer(id: string): Promise<{
   message: string;
 }> {
   try {
-    const response = await fetch(`${API_BASE_URL}/customers/${id}`, {
+    const response = await apiRequest(`${API_BASE_URL}/customers/${id}`, {
       method: "DELETE",
       headers: {
         "Content-Type": "application/json",
       },
     });
-
-    if (!response.ok) {
-      // Try to get detailed error message from response body
-      let errorMessage = `Error ${response.status}: ${response.statusText}`;
-      try {
-        const errorData = await response.json();
-        if (errorData.message) {
-          if (Array.isArray(errorData.message)) {
-            errorMessage = `Error ${response.status}: ${errorData.message.join(', ')}`;
-          } else {
-            errorMessage = `Error ${response.status}: ${errorData.message}`;
-          }
-        }
-      } catch (parseError) {
-        // If we can't parse the error response, use the default message
-        console.warn("Could not parse error response:", parseError);
-      }
-      throw new Error(errorMessage);
-    }
 
     const data = await response.json();
 
@@ -648,16 +546,12 @@ export async function processSale(id: string): Promise<{
   data?: any;
 }> {
   try {
-    const response = await fetch(`${API_BASE_URL}/sales/${id}/process`, {
+    const response = await apiRequest(`${API_BASE_URL}/sales/${id}/process`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
       },
     });
-
-    if (!response.ok) {
-      throw new Error(`Error ${response.status}: ${response.statusText}`);
-    }
 
     const data = await response.json();
 
@@ -678,27 +572,12 @@ export async function resendInvoice(id: string): Promise<{
   message: string;
 }> {
   try {
-    const response = await fetch(`${API_BASE_URL}/sales/${id}/resend-invoice`, {
+    const response = await apiRequest(`${API_BASE_URL}/sales/${id}/resend-invoice`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
     });
-
-    if (!response.ok) {
-      // Try to get detailed error message from response body
-      let errorMessage = `Error ${response.status}: ${response.statusText}`;
-      try {
-        const errorData = await response.json();
-        if (errorData.message) {
-          errorMessage = `Error ${response.status}: ${errorData.message}`;
-        }
-      } catch (parseError) {
-        // If we can't parse the error response, use the default message
-        console.warn("Could not parse error response:", parseError);
-      }
-      throw new Error(errorMessage);
-    }
 
     const data = await response.json();
     return {

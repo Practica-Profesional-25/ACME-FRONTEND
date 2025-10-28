@@ -1,73 +1,154 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Card, CardContent } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Separator } from "@/components/ui/separator"
-import { ShoppingCart, Package, Users, LogOut, User, Building2 } from "lucide-react"
-import { SalesWizard } from "./sales-wizard"
-import { ProductManagement } from "./screens/product-management"
-import { CustomerManagement } from "./screens/customer-management"
-import { SalesMain } from "./screens/sales-main"
-import { redirect } from "next/navigation"
-import { useUser } from "@/contexts/UserContext"
+import {
+  ForwardRefExoticComponent,
+  RefAttributes,
+  useEffect,
+  useState,
+} from "react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import {
+  ShoppingCart,
+  Package,
+  Users,
+  LogOut,
+  User,
+  Building2,
+  LucideProps,
+} from "lucide-react";
+import { SalesWizard } from "./sales-wizard";
+import { ProductManagement } from "./screens/product-management";
+import { CustomerManagement } from "./screens/customer-management";
+import { SalesMain } from "./screens/sales-main";
+import { redirect } from "next/navigation";
+import { useUser } from "@/contexts/UserContext";
+import { useAuth } from "@/contexts/AccessTokenContext";
+import { ProtectedSection } from "./ui/protected-section";
+import {
+  ProductsAccessDenied,
+  SalesAccessDenied,
+  CustomersAccessDenied,
+} from "@/components/ui/access-denied";
 
-type Screen = "ventas" | "productos" | "clientes" | "wizard" | "logout"
+type Screen = "ventas" | "productos" | "clientes" | "wizard" | "logout";
 
 export function AdventureWorksApp() {
-  const [currentScreen, setCurrentScreen] = useState<Screen>("ventas")
-  const [isInSaleProcess, setIsInSaleProcess] = useState(false)
+  const auth = useAuth();
+  const [currentScreen, setCurrentScreen] = useState<Screen>("ventas");
+  const [isInSaleProcess, setIsInSaleProcess] = useState(false);
   const userInfo = useUser();
+  const [sidebarOptions, setSidebarOptions] = useState<
+    {
+      label: string;
+      value: Screen;
+      icon: ForwardRefExoticComponent<
+        Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>
+      >;
+    }[]
+  >([{ label: "Cerrar sesión", value: "logout", icon: LogOut }]);
 
   // Mock user and branch data
-  const user = { nombre: userInfo?.name }
-  const sucursal = { nombre: "Sucursal Centro" }
+  const user = { nombre: userInfo?.name };
+  const sucursal = { nombre: "Sucursal Centro" };
 
-  const sidebarOptions = [
-    { label: "Ventas", value: "ventas" as Screen, icon: ShoppingCart },
-    { label: "Productos", value: "productos" as Screen, icon: Package },
-    { label: "Clientes", value: "clientes" as Screen, icon: Users },
-    { label: "Cerrar sesión", value: "logout" as Screen, icon: LogOut },
-  ]
+  // Generate sidebar options based on permissions
+  useEffect(() => {
+    const options: {
+      label: string;
+      value: Screen;
+      icon: ForwardRefExoticComponent<
+        Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>
+      >;
+    }[] = [];
+
+    if (auth.canAccessSales || auth.canAdmin) {
+      options.push({ label: "Ventas", value: "ventas", icon: ShoppingCart });
+    }
+    if (auth.canAccessProducts || auth.canAdmin) {
+      options.push({ label: "Productos", value: "productos", icon: Package });
+    }
+    if (auth.canAccessCustomers || auth.canAdmin) {
+      options.push({ label: "Clientes", value: "clientes", icon: Users });
+    }
+
+    setSidebarOptions([
+      ...options,
+      { label: "Cerrar sesión", value: "logout", icon: LogOut },
+    ]);
+  }, [auth]);
 
   const handleSidebarClick = (value: Screen) => {
-    if (isInSaleProcess && (value === "productos" || value === "clientes" || value === "logout")) {
-      return // Disabled during sale process
+    if (
+      isInSaleProcess &&
+      (value === "productos" || value === "clientes" || value === "logout")
+    ) {
+      return; // Disabled during sale process
     }
 
-    if(value === 'logout') {
-      redirect('/auth/logout')
+    if (value === "logout") {
+      redirect("/auth/logout");
     }
 
-    setCurrentScreen(value)
-    setIsInSaleProcess(false)
-  }
+    setCurrentScreen(value);
+    setIsInSaleProcess(false);
+  };
 
   const startSaleProcess = () => {
-    setCurrentScreen("wizard")
-    setIsInSaleProcess(true)
-  }
+    setCurrentScreen("wizard");
+    setIsInSaleProcess(true);
+  };
 
   const completeSaleProcess = () => {
-    setCurrentScreen("ventas")
-    setIsInSaleProcess(false)
-  }
+    setCurrentScreen("ventas");
+    setIsInSaleProcess(false);
+  };
 
   const renderCurrentScreen = () => {
     switch (currentScreen) {
       case "ventas":
-        return <SalesMain onStartSale={startSaleProcess} />
+        return (
+          <ProtectedSection
+            requiredPermissions={[
+              "admin",
+              "read:products",
+              "read:sales",
+              "process:sales",
+            ]}
+            requireAll={true}
+            fallback={<SalesAccessDenied />}
+          >
+            <SalesMain onStartSale={startSaleProcess} />;
+          </ProtectedSection>
+        );
       case "productos":
-        return <ProductManagement />
+        return (
+          <ProtectedSection
+            requiredPermissions={["admin"]}
+            requireAll={false}
+            fallback={<ProductsAccessDenied />}
+          >
+            <ProductManagement />
+          </ProtectedSection>
+        );
       case "clientes":
-        return <CustomerManagement />
+        return (
+          <ProtectedSection
+            requiredPermissions={["admin", "read:customers", "create:customer"]}
+            requireAll={false}
+            fallback={<CustomersAccessDenied />}
+          >
+            <CustomerManagement />
+          </ProtectedSection>
+        );
       case "wizard":
-        return <SalesWizard onComplete={completeSaleProcess} />
+        return <SalesWizard onComplete={completeSaleProcess} />;
       default:
-        return <SalesMain onStartSale={startSaleProcess} />
+        return <SalesMain onStartSale={startSaleProcess} />;
     }
-  }
+  };
 
   return (
     <div className="min-h-screen bg-background flex">
@@ -82,15 +163,23 @@ export function AdventureWorksApp() {
           {sidebarOptions.map((option) => {
             const isDisabled =
               isInSaleProcess &&
-              (option.value === "productos" || option.value === "clientes" || option.value === "logout")
-            const isActive = currentScreen === option.value || (isInSaleProcess && option.value === "ventas")
+              (option.value === "productos" ||
+                option.value === "clientes" ||
+                option.value === "logout");
+            const isActive =
+              currentScreen === option.value ||
+              (isInSaleProcess && option.value === "ventas");
 
             return (
               <Button
                 key={option.value}
                 variant={isActive ? "default" : "ghost"}
                 className={`w-full justify-start ${
-                  isDisabled ? "opacity-50 cursor-not-allowed" : isActive ? "bg-primary text-primary-foreground" : ""
+                  isDisabled
+                    ? "opacity-50 cursor-not-allowed"
+                    : isActive
+                    ? "bg-primary text-primary-foreground"
+                    : ""
                 }`}
                 onClick={() => handleSidebarClick(option.value)}
                 disabled={isDisabled}
@@ -98,7 +187,7 @@ export function AdventureWorksApp() {
                 <option.icon className="h-4 w-4 mr-2" />
                 {option.label}
               </Button>
-            )
+            );
           })}
         </nav>
 
@@ -110,7 +199,9 @@ export function AdventureWorksApp() {
                   <ShoppingCart className="h-4 w-4" />
                   <span className="text-sm font-medium">Venta en proceso</span>
                 </div>
-                <p className="text-xs text-orange-600 mt-1">Algunas opciones están deshabilitadas</p>
+                <p className="text-xs text-orange-600 mt-1">
+                  Algunas opciones están deshabilitadas
+                </p>
               </CardContent>
             </Card>
           </div>
@@ -141,7 +232,10 @@ export function AdventureWorksApp() {
             </div>
 
             <div className="flex items-center gap-2">
-              <Badge variant="secondary" className="bg-secondary text-secondary-foreground">
+              <Badge
+                variant="secondary"
+                className="bg-secondary text-secondary-foreground"
+              >
                 Sistema Activo
               </Badge>
             </div>
@@ -149,8 +243,10 @@ export function AdventureWorksApp() {
         </header>
 
         {/* Content Area */}
-        <main className="flex-1 p-6 overflow-auto">{renderCurrentScreen()}</main>
+        <main className="flex-1 p-6 overflow-auto">
+          {renderCurrentScreen()}
+        </main>
       </div>
     </div>
-  )
+  );
 }
