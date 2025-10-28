@@ -111,13 +111,8 @@ export function AdventureWorksApp() {
       case "ventas":
         return (
           <ProtectedSection
-            requiredPermissions={[
-              "admin",
-              "read:products",
-              "read:sales",
-              "process:sales",
-            ]}
-            requireAll={true}
+            requiredPermissions={["admin", "create:products", "create:sales"]}
+            requireAll={false}
             fallback={<SalesAccessDenied />}
           >
             <SalesMain onStartSale={startSaleProcess} />;
@@ -126,7 +121,7 @@ export function AdventureWorksApp() {
       case "productos":
         return (
           <ProtectedSection
-            requiredPermissions={["admin"]}
+            requiredPermissions={["admin", "create:products"]}
             requireAll={false}
             fallback={<ProductsAccessDenied />}
           >
@@ -136,7 +131,7 @@ export function AdventureWorksApp() {
       case "clientes":
         return (
           <ProtectedSection
-            requiredPermissions={["admin", "read:customers", "create:customer"]}
+            requiredPermissions={["admin", "create:customers"]}
             requireAll={false}
             fallback={<CustomersAccessDenied />}
           >

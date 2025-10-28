@@ -42,8 +42,10 @@ import type {
   CreateCustomerRequest,
   UpdateCustomerRequest,
 } from "@/lib/types";
+import { useAuth } from "@/contexts/AccessTokenContext";
 
 export function CustomerManagement() {
+  const auth = useAuth();
   const [customers, setCustomers] = useState<ApiCustomer[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -72,7 +74,7 @@ export function CustomerManagement() {
     setLoading(true);
     setError(null);
     try {
-      const response = await getCustomers();
+      const response = await getCustomers({}, auth.token!);
       setCustomers(response.data);
     } catch (err) {
       console.error("Error al cargar clientes:", err);
@@ -145,12 +147,9 @@ export function CustomerManagement() {
           tipo: "Natural",
         };
 
-        const response = await updateCustomer(editingCustomer.id, updateData);
-        setCustomers(
-          customers.map((c) =>
-            c.id === editingCustomer.id ? response.data : c
-          )
-        );
+        await updateCustomer(editingCustomer.id, updateData, auth.token!);
+        // Recargar todos los clientes después de actualizar
+        await loadCustomers();
       } else {
         // Crear nuevo cliente
         const createData: CreateCustomerRequest = {
@@ -165,7 +164,8 @@ export function CustomerManagement() {
           tipo: "Natural",
         };
 
-        await createCustomer(createData);
+        await createCustomer(createData, auth.token!);
+        // Recargar todos los clientes después de crear
         await loadCustomers();
       }
 
@@ -187,7 +187,7 @@ export function CustomerManagement() {
     setError(null);
 
     try {
-      await deleteCustomer(customerId);
+      await deleteCustomer(customerId, auth.token!);
       setCustomers(customers.filter((c) => c.id !== customerId));
     } catch (err) {
       console.error("Error al eliminar cliente:", err);
