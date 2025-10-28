@@ -25,6 +25,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { SaleDetailsDialog } from "@/components/ui/sale-details-dialog";
 import { getSales } from "@/lib/api";
 import type { ApiSale, SaleFilters } from "@/lib/types";
+import { useAuth } from "@/contexts/AccessTokenContext";
 
 interface SalesMainProps {
   onStartSale: () => void;
@@ -38,6 +39,7 @@ export function SalesMain({ onStartSale }: SalesMainProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalSales, setTotalSales] = useState(0);
+  const auth = useAuth();
   const itemsPerPage = 10;
 
   // Función para cargar las ventas desde la API
@@ -50,7 +52,7 @@ export function SalesMain({ onStartSale }: SalesMainProps) {
         ...filters,
         page: currentPage,
         limit: itemsPerPage,
-      });
+      }, auth.token!);
 
       setSales(response.data);
       setTotalPages(response.totalPages);

@@ -18,13 +18,15 @@ import type {
   CreateSaleRequest,
   CreateSaleResponse,
 } from "./types";
+import { apiRequest } from "./api-interceptor";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL || "https://acme.infoking.win/api";
 
 // Función para obtener productos con filtros opcionales
 export async function getProducts(
-  filters: ProductFilters = {}
+  filters: ProductFilters = {},
+  token: string
 ): Promise<ProductsApiResponse> {
   try {
     const searchParams = new URLSearchParams();
@@ -42,23 +44,15 @@ export async function getProducts(
     const url = `${API_BASE_URL}/products${
       searchParams.toString() ? `?${searchParams.toString()}` : ""
     }`;
-
-    const response = await fetch(url, {
+    const response = await apiRequest(url, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
       },
     });
 
-    if (!response.ok) {
-      throw new Error(`Error ${response.status}: ${response.statusText}`);
-    }
-
     const data: ProductsApiResponse = await response.json();
-
-    if (!data.success) {
-      throw new Error(data.message || "Error al obtener productos");
-    }
 
     return data;
   } catch (error) {
@@ -71,7 +65,8 @@ export async function getProducts(
 
 // Función para obtener ventas con filtros opcionales
 export async function getSales(
-  filters: SaleFilters = {}
+  filters: SaleFilters = {},
+  token: string
 ): Promise<SalesApiResponse> {
   try {
     const searchParams = new URLSearchParams();
@@ -90,22 +85,15 @@ export async function getSales(
       searchParams.toString() ? `?${searchParams.toString()}` : ""
     }`;
 
-    const response = await fetch(url, {
+    const response = await apiRequest(url, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
       },
     });
 
-    if (!response.ok) {
-      throw new Error(`Error ${response.status}: ${response.statusText}`);
-    }
-
     const data: SalesApiResponse = await response.json();
-
-    if (!data.success) {
-      throw new Error(data.message || "Error al obtener ventas");
-    }
 
     return data;
   } catch (error) {
@@ -115,24 +103,17 @@ export async function getSales(
 }
 
 // Función para obtener una venta específica por ID
-export async function getSaleById(id: string): Promise<SaleApiResponse> {
+export async function getSaleById(id: string, token: string): Promise<SaleApiResponse> {
   try {
-    const response = await fetch(`${API_BASE_URL}/sales/${id}`, {
+    const response = await apiRequest(`${API_BASE_URL}/sales/${id}`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
       },
     });
 
-    if (!response.ok) {
-      throw new Error(`Error ${response.status}: ${response.statusText}`);
-    }
-
     const data: SaleApiResponse = await response.json();
-
-    if (!data.success) {
-      throw new Error(data.message || "Error al obtener venta");
-    }
 
     return data;
   } catch (error) {
@@ -142,7 +123,7 @@ export async function getSaleById(id: string): Promise<SaleApiResponse> {
 }
 
 // Función para buscar ventas con debounce (útil para búsquedas en tiempo real)
-export function createSaleSearch() {
+export function createSaleSearch(token: string) {
   let timeoutId: NodeJS.Timeout | null = null;
 
   return function searchSales(
@@ -156,7 +137,7 @@ export function createSaleSearch() {
 
     timeoutId = setTimeout(async () => {
       try {
-        const data = await getSales(filters);
+        const data = await getSales(filters, token);
         callback(data, null);
       } catch (error) {
         callback(null, error as Error);
@@ -166,24 +147,17 @@ export function createSaleSearch() {
 }
 
 // Función para obtener un producto específico por ID
-export async function getProductById(id: string) {
+export async function getProductById(id: string, token: string) {
   try {
-    const response = await fetch(`${API_BASE_URL}/products/${id}`, {
+    const response = await apiRequest(`${API_BASE_URL}/products/${id}`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
       },
     });
 
-    if (!response.ok) {
-      throw new Error(`Error ${response.status}: ${response.statusText}`);
-    }
-
     const data = await response.json();
-
-    if (!data.success) {
-      throw new Error(data.message || "Error al obtener producto");
-    }
 
     return data;
   } catch (error) {
@@ -193,7 +167,7 @@ export async function getProductById(id: string) {
 }
 
 // Función para buscar productos con debounce (útil para búsquedas en tiempo real)
-export function createProductSearch() {
+export function createProductSearch(token: string) {
   let timeoutId: NodeJS.Timeout | null = null;
 
   return function searchProducts(
@@ -207,7 +181,7 @@ export function createProductSearch() {
 
     timeoutId = setTimeout(async () => {
       try {
-        const data = await getProducts(filters);
+        const data = await getProducts(filters, token);
         callback(data, null);
       } catch (error) {
         callback(null, error as Error);
@@ -218,26 +192,20 @@ export function createProductSearch() {
 
 // Función para crear un nuevo producto
 export async function createProduct(
-  productData: CreateProductRequest
+  productData: CreateProductRequest,
+  token: string
 ): Promise<ProductApiResponse> {
   try {
-    const response = await fetch(`${API_BASE_URL}/products`, {
+    const response = await apiRequest(`${API_BASE_URL}/products`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify(productData),
     });
 
-    if (!response.ok) {
-      throw new Error(`Error ${response.status}: ${response.statusText}`);
-    }
-
     const data: ProductApiResponse = await response.json();
-
-    if (!data.success) {
-      throw new Error(data.message || "Error al crear producto");
-    }
 
     return data;
   } catch (error) {
@@ -249,26 +217,20 @@ export async function createProduct(
 // Función para actualizar un producto existente
 export async function updateProduct(
   id: string,
-  productData: UpdateProductRequest
+  productData: UpdateProductRequest,
+  token: string
 ): Promise<ProductApiResponse> {
   try {
-    const response = await fetch(`${API_BASE_URL}/products/${id}`, {
+    const response = await apiRequest(`${API_BASE_URL}/products/${id}`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify(productData),
     });
 
-    if (!response.ok) {
-      throw new Error(`Error ${response.status}: ${response.statusText}`);
-    }
-
     const data: ProductApiResponse = await response.json();
-
-    if (!data.success) {
-      throw new Error(data.message || "Error al actualizar producto");
-    }
 
     return data;
   } catch (error) {
@@ -281,7 +243,8 @@ export async function updateProduct(
 
 // Función para obtener clientes con filtros opcionales
 export async function getCustomers(
-  filters: CustomerFilters = {}
+  filters: CustomerFilters = {},
+  token: string
 ): Promise<CustomersApiResponse> {
   try {
     const searchParams = new URLSearchParams();
@@ -299,16 +262,13 @@ export async function getCustomers(
       searchParams.toString() ? `?${searchParams.toString()}` : ""
     }`;
 
-    const response = await fetch(url, {
+    const response = await apiRequest(url, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
       },
     });
-
-    if (!response.ok) {
-      throw new Error(`Error ${response.status}: ${response.statusText}`);
-    }
 
     const data: CustomersApiResponse = await response.json();
 
@@ -321,25 +281,19 @@ export async function getCustomers(
 
 // Función para obtener un cliente específico por ID
 export async function getCustomerById(
-  id: string
+  id: string,
+  token: string
 ): Promise<CustomerApiResponse> {
   try {
-    const response = await fetch(`${API_BASE_URL}/customers/${id}`, {
+    const response = await apiRequest(`${API_BASE_URL}/customers/${id}`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
       },
     });
 
-    if (!response.ok) {
-      throw new Error(`Error ${response.status}: ${response.statusText}`);
-    }
-
     const data: CustomerApiResponse = await response.json();
-
-    if (!data.success) {
-      throw new Error(data.message || "Error al obtener cliente");
-    }
 
     return data;
   } catch (error) {
@@ -349,7 +303,7 @@ export async function getCustomerById(
 }
 
 // Función para buscar clientes con debounce (útil para búsquedas en tiempo real)
-export function createCustomerSearch() {
+export function createCustomerSearch(token: string) {
   let timeoutId: NodeJS.Timeout | null = null;
 
   return function searchCustomers(
@@ -363,7 +317,7 @@ export function createCustomerSearch() {
 
     timeoutId = setTimeout(async () => {
       try {
-        const data = await getCustomers(filters);
+        const data = await getCustomers(filters, token);
         callback(data, null);
       } catch (error) {
         callback(null, error as Error);
@@ -375,6 +329,7 @@ export function createCustomerSearch() {
 // Función para buscar clientes por término de búsqueda
 export async function searchCustomers(
   searchTerm: string,
+  token: string,
   limit?: number
 ): Promise<CustomersApiResponse> {
   try {
@@ -382,22 +337,18 @@ export async function searchCustomers(
     searchParams.append("q", searchTerm);
     if (limit) searchParams.append("limit", limit.toString());
 
-    const response = await fetch(`${API_BASE_URL}/customers/search?${searchParams.toString()}`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
+    const response = await apiRequest(
+      `${API_BASE_URL}/customers/search?${searchParams.toString()}`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
 
-    if (!response.ok) {
-      throw new Error(`Error ${response.status}: ${response.statusText}`);
-    }
-
-    const data: CustomersApiResponse = await response.json();
-
-    if (!data.success) {
-      throw new Error(data.message || "Error al buscar clientes");
-    }
+    const data = await response.json();
 
     return data;
   } catch (error) {
@@ -407,28 +358,24 @@ export async function searchCustomers(
 }
 
 // Función para obtener estadísticas de clientes por departamento
-export async function getCustomerStatsByDepartment(): Promise<{
+export async function getCustomerStatsByDepartment(token: string): Promise<{
   success: boolean;
   message: string;
   data: Array<{ departamento: string; count: number }>;
 }> {
   try {
-    const response = await fetch(`${API_BASE_URL}/customers/stats/departamento`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error(`Error ${response.status}: ${response.statusText}`);
-    }
+    const response = await apiRequest(
+      `${API_BASE_URL}/customers/stats/departamento`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
 
     const data = await response.json();
-
-    if (!data.success) {
-      throw new Error(data.message || "Error al obtener estadísticas por departamento");
-    }
 
     return data;
   } catch (error) {
@@ -438,28 +385,21 @@ export async function getCustomerStatsByDepartment(): Promise<{
 }
 
 // Función para obtener estadísticas de clientes por tipo
-export async function getCustomerStatsByType(): Promise<{
+export async function getCustomerStatsByType(token: string): Promise<{
   success: boolean;
   message: string;
   data: Array<{ tipo: string; count: number }>;
 }> {
   try {
-    const response = await fetch(`${API_BASE_URL}/customers/stats/tipo`, {
+    const response = await apiRequest(`${API_BASE_URL}/customers/stats/tipo`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
       },
     });
 
-    if (!response.ok) {
-      throw new Error(`Error ${response.status}: ${response.statusText}`);
-    }
-
     const data = await response.json();
-
-    if (!data.success) {
-      throw new Error(data.message || "Error al obtener estadísticas por tipo");
-    }
 
     return data;
   } catch (error) {
@@ -470,26 +410,20 @@ export async function getCustomerStatsByType(): Promise<{
 
 // Función para crear un nuevo cliente
 export async function createCustomer(
-  customerData: CreateCustomerRequest
+  customerData: CreateCustomerRequest,
+  token: string
 ): Promise<CustomerApiResponse> {
   try {
-    const response = await fetch(`${API_BASE_URL}/customers`, {
+    const response = await apiRequest(`${API_BASE_URL}/customers`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify(customerData),
     });
 
-    if (!response.ok) {
-      throw new Error(`Error ${response.status}: ${response.statusText}`);
-    }
-
     const data: CustomerApiResponse = await response.json();
-
-    if (!data.success) {
-      throw new Error(data.message || "Error al crear cliente");
-    }
 
     return data;
   } catch (error) {
@@ -500,41 +434,20 @@ export async function createCustomer(
 
 // Función para crear una nueva venta
 export async function createSale(
-  saleData: CreateSaleRequest
+  saleData: CreateSaleRequest,
+  token: string
 ): Promise<CreateSaleResponse> {
   try {
-    const response = await fetch(`${API_BASE_URL}/sales`, {
+    const response = await apiRequest(`${API_BASE_URL}/sales`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify(saleData),
     });
 
-    if (!response.ok) {
-      // Try to get detailed error message from response body
-      let errorMessage = `Error ${response.status}: ${response.statusText}`;
-      try {
-        const errorData = await response.json();
-        if (errorData.message) {
-          if (Array.isArray(errorData.message)) {
-            errorMessage = `Error ${response.status}: ${errorData.message.join(', ')}`;
-          } else {
-            errorMessage = `Error ${response.status}: ${errorData.message}`;
-          }
-        }
-      } catch (parseError) {
-        // If we can't parse the error response, use the default message
-        console.warn("Could not parse error response:", parseError);
-      }
-      throw new Error(errorMessage);
-    }
-
     const data: CreateSaleResponse = await response.json();
-
-    if (!data.success) {
-      throw new Error(data.message || "Error al crear venta");
-    }
 
     return data;
   } catch (error) {
@@ -546,41 +459,20 @@ export async function createSale(
 // Función para actualizar un cliente existente
 export async function updateCustomer(
   id: string,
-  customerData: UpdateCustomerRequest
+  customerData: UpdateCustomerRequest,
+  token: string
 ): Promise<CustomerApiResponse> {
   try {
-    const response = await fetch(`${API_BASE_URL}/customers/${id}`, {
+    const response = await apiRequest(`${API_BASE_URL}/customers/${id}`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify(customerData),
     });
 
-    if (!response.ok) {
-      // Try to get detailed error message from response body
-      let errorMessage = `Error ${response.status}: ${response.statusText}`;
-      try {
-        const errorData = await response.json();
-        if (errorData.message) {
-          if (Array.isArray(errorData.message)) {
-            errorMessage = `Error ${response.status}: ${errorData.message.join(', ')}`;
-          } else {
-            errorMessage = `Error ${response.status}: ${errorData.message}`;
-          }
-        }
-      } catch (parseError) {
-        // If we can't parse the error response, use the default message
-        console.warn("Could not parse error response:", parseError);
-      }
-      throw new Error(errorMessage);
-    }
-
     const data: CustomerApiResponse = await response.json();
-
-    if (!data.success) {
-      throw new Error(data.message || "Error al actualizar cliente");
-    }
 
     return data;
   } catch (error) {
@@ -590,42 +482,20 @@ export async function updateCustomer(
 }
 
 // Función para eliminar un cliente
-export async function deleteCustomer(id: string): Promise<{
+export async function deleteCustomer(id: string, token: string): Promise<{
   success: boolean;
   message: string;
 }> {
   try {
-    const response = await fetch(`${API_BASE_URL}/customers/${id}`, {
+    const response = await apiRequest(`${API_BASE_URL}/customers/${id}`, {
       method: "DELETE",
       headers: {
         "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
       },
     });
 
-    if (!response.ok) {
-      // Try to get detailed error message from response body
-      let errorMessage = `Error ${response.status}: ${response.statusText}`;
-      try {
-        const errorData = await response.json();
-        if (errorData.message) {
-          if (Array.isArray(errorData.message)) {
-            errorMessage = `Error ${response.status}: ${errorData.message.join(', ')}`;
-          } else {
-            errorMessage = `Error ${response.status}: ${errorData.message}`;
-          }
-        }
-      } catch (parseError) {
-        // If we can't parse the error response, use the default message
-        console.warn("Could not parse error response:", parseError);
-      }
-      throw new Error(errorMessage);
-    }
-
     const data = await response.json();
-
-    if (!data.success) {
-      throw new Error(data.message || "Error al eliminar cliente");
-    }
 
     return data;
   } catch (error) {
@@ -635,28 +505,21 @@ export async function deleteCustomer(id: string): Promise<{
 }
 
 // Función para procesar una venta con DTE
-export async function processSale(id: string): Promise<{
+export async function processSale(id: string, token: string): Promise<{
   success: boolean;
   message: string;
   data?: any;
 }> {
   try {
-    const response = await fetch(`${API_BASE_URL}/sales/${id}/process`, {
+    const response = await apiRequest(`${API_BASE_URL}/sales/${id}/process`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
       },
     });
 
-    if (!response.ok) {
-      throw new Error(`Error ${response.status}: ${response.statusText}`);
-    }
-
     const data = await response.json();
-
-    if (!data.success) {
-      throw new Error(data.message || "Error al procesar la venta");
-    }
 
     return data;
   } catch (error) {
@@ -666,32 +529,21 @@ export async function processSale(id: string): Promise<{
 }
 
 // Función para reenviar factura y DTE por email
-export async function resendInvoice(id: string): Promise<{
+export async function resendInvoice(id: string, token: string): Promise<{
   success: boolean;
   message: string;
 }> {
   try {
-    const response = await fetch(`${API_BASE_URL}/sales/${id}/resend-invoice`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
-
-    if (!response.ok) {
-      // Try to get detailed error message from response body
-      let errorMessage = `Error ${response.status}: ${response.statusText}`;
-      try {
-        const errorData = await response.json();
-        if (errorData.message) {
-          errorMessage = `Error ${response.status}: ${errorData.message}`;
-        }
-      } catch (parseError) {
-        // If we can't parse the error response, use the default message
-        console.warn("Could not parse error response:", parseError);
+    const response = await apiRequest(
+      `${API_BASE_URL}/sales/${id}/resend-invoice`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
       }
-      throw new Error(errorMessage);
-    }
+    );
 
     const data = await response.json();
     return {

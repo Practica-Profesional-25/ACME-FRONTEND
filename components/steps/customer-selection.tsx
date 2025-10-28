@@ -31,10 +31,12 @@ import type {
   CreateCustomerRequest,
 } from "@/lib/types";
 import type { SaleData, Customer } from "../sales-wizard";
+import { useAuth } from "@/contexts/AccessTokenContext";
 
 interface CustomerSelectionProps {
   saleData: SaleData;
   setSaleData: (data: SaleData) => void;
+  onNext?: () => void;
 }
 
 // Mock customer data
@@ -99,6 +101,7 @@ const giros = [
 export function CustomerSelection({
   saleData,
   setSaleData,
+  onNext,
 }: CustomerSelectionProps) {
   const [customerType, setCustomerType] = useState<
     "search" | "factura" | "credito-fiscal" | "default"
@@ -109,12 +112,13 @@ export function CustomerSelection({
     nit: "",
     email: "",
   });
-
+  
   // Estados para la API de clientes
   const [customers, setCustomers] = useState<ApiCustomer[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchPerformed, setSearchPerformed] = useState(false);
+  const auth = useAuth();
 
   const [newCustomerForm, setNewCustomerForm] = useState({
     nombre: "",
@@ -153,7 +157,7 @@ export function CustomerSelection({
       if (searchForm.nit) filters.nit = searchForm.nit;
       if (searchForm.email) filters.email = searchForm.email;
 
-      const response = await getCustomers(filters);
+      const response = await getCustomers(filters, auth.token!);
       setCustomers(response.data);
     } catch (err) {
       console.error("Error al buscar clientes:", err);
@@ -205,7 +209,7 @@ export function CustomerSelection({
           tipo: "Natural",
         };
 
-        const response = await createCustomer(customerData);
+        const response = await createCustomer(customerData, auth.token!);
         const customer = apiCustomerToCustomer(response.data);
         setSaleData({ ...saleData, customer });
       } catch (err) {
@@ -246,7 +250,7 @@ export function CustomerSelection({
           tipo: "Natural",
         };
 
-        const response = await createCustomer(customerData);
+        const response = await createCustomer(customerData, auth.token!);
         const customer = apiCustomerToCustomer(response.data);
         setSaleData({ ...saleData, customer });
       } catch (err) {
@@ -328,38 +332,45 @@ export function CustomerSelection({
 
       {!saleData.customer && (
         <>
-           <Card>
-             <CardHeader>
-               <CardTitle>Seleccionar tipo de cliente</CardTitle>
-             </CardHeader>
-             <CardContent>
-               {error && (
-                 <Alert className="mb-4">
-                   <AlertCircle className="h-4 w-4" />
-                   <AlertDescription>{error}</AlertDescription>
-                 </Alert>
-               )}
-               
-               <RadioGroup value={customerType} onValueChange={(value: any) => setCustomerType(value)}>
-                 <div className="flex items-center space-x-2">
-                   <RadioGroupItem value="search" id="search" />
-                   <Label htmlFor="search">Buscar cliente existente</Label>
-                 </div>
-                 <div className="flex items-center space-x-2">
-                   <RadioGroupItem value="factura" id="factura" />
-                   <Label htmlFor="factura">Nuevo cliente - Persona Natural (Factura)</Label>
-                 </div>
-                 <div className="flex items-center space-x-2">
-                   <RadioGroupItem value="credito-fiscal" id="credito-fiscal" />
-                   <Label htmlFor="credito-fiscal">Nuevo cliente - Persona Natural (Crédito Fiscal)</Label>
-                 </div>
-                 <div className="flex items-center space-x-2">
-                   <RadioGroupItem value="default" id="default" />
-                   <Label htmlFor="default">Consumidor final</Label>
-                 </div>
-               </RadioGroup>
-             </CardContent>
-           </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Seleccionar tipo de cliente</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {error && (
+                <Alert className="mb-4">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
+
+              <RadioGroup
+                value={customerType}
+                onValueChange={(value: any) => setCustomerType(value)}
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="search" id="search" />
+                  <Label htmlFor="search">Buscar cliente existente</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="factura" id="factura" />
+                  <Label htmlFor="factura">
+                    Nuevo cliente - Persona Natural (Factura)
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="credito-fiscal" id="credito-fiscal" />
+                  <Label htmlFor="credito-fiscal">
+                    Nuevo cliente - Persona Natural (Crédito Fiscal)
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="default" id="default" />
+                  <Label htmlFor="default">Consumidor final</Label>
+                </div>
+              </RadioGroup>
+            </CardContent>
+          </Card>
 
           {customerType === "search" && (
             <Card>
@@ -549,7 +560,9 @@ export function CustomerSelection({
                 </div>
                 <Button
                   onClick={createNewCustomer}
-                  disabled={!newCustomerForm.nombre || !newCustomerForm.email || loading}
+                  disabled={
+                    !newCustomerForm.nombre || !newCustomerForm.email || loading
+                  }
                   className="bg-secondary hover:bg-secondary/90"
                 >
                   {loading ? (
