@@ -64,23 +64,8 @@ export function ProductManagement() {
     stock: "",
   });
   const { toast } = useToast();
-  const [token, setToken] = useState("")
+  const token = useToken();
 
-  const fetchToken = async () => {
-      const res = await fetch('/api/token')
-
-      if(!res.ok) {
-        console.error('Error obteniendo token')
-      }
-
-      const data = await res.json()
-      setToken(data?.token ?? null)
-    }
-
-  useEffect(() => {
-    fetchToken()
-  }, [])
-    
   // Cargar productos al montar el componente
   useEffect(() => {
     if (token) {
@@ -91,14 +76,22 @@ export function ProductManagement() {
   const loadProducts = async (filters: ProductFilters = {}) => {
     try {
       setLoading(true);
-      console.log(token)
-      if(token) {
-        const response = await getProducts({
-          ...filters,
-          limit: 100, // Cargar más productos para la gestión
-        }, token);
-        setProducts(response.data);
+      
+      // Verificar que tenemos un token válido
+      if (!token) {
+        toast({
+          title: "Error de autenticación",
+          description: "No se pudo obtener el token de acceso.",
+          variant: "destructive",
+        });
+        return;
       }
+
+      const response = await getProducts({
+        ...filters,
+        limit: 100, // Cargar más productos para la gestión
+      }, token);
+      setProducts(response.data);
     } catch (error) {
       console.error("Error loading products:", error);
       toast({
@@ -163,6 +156,16 @@ export function ProductManagement() {
     try {
       setSaving(true);
       
+      // Verificar que tenemos un token válido
+      if (!token) {
+        toast({
+          title: "Error de autenticación",
+          description: "No se pudo obtener el token de acceso.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
       // Validar campos requeridos
       if (!formData.identificador || !formData.nombre || !formData.categoria || 
           !formData.subcategoria || !formData.precio || !formData.stock) {
@@ -207,7 +210,7 @@ export function ProductManagement() {
           stock: stock,
         };
 
-        await updateProduct(editingProduct.id, updateData);
+        await updateProduct(editingProduct.id, updateData, token);
         
         toast({
           title: "Éxito",
@@ -224,7 +227,7 @@ export function ProductManagement() {
           stock: stock,
         };
 
-        await createProduct(createData);
+        await createProduct(createData, token);
         
         toast({
           title: "Éxito",

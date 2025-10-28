@@ -7,8 +7,6 @@ export async function GET() {
         audience: process.env.AUTH0_AUDIENCE
     });
 
-    console.log(accessToken)
-
     if (!accessToken) {
         return Response.json({ error: 'Not authenticated' }, { status: 401 });
     }
